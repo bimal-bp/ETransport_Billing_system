@@ -384,6 +384,85 @@
             font-size: 14px;
         }
         
+        /* New styles for vendor grouping */
+        .vendor-group {
+            margin-bottom: 30px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .vendor-header {
+            background-color: #e3f2fd;
+            padding: 15px 20px;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+        }
+        
+        .vendor-vehicles {
+            padding: 0 20px;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+        
+        .vendor-vehicles.expanded {
+            max-height: 500px;
+            padding: 15px 20px;
+        }
+        
+        .vehicle-option {
+            padding: 10px 15px;
+            margin: 5px 0;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .vehicle-option:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .vehicle-option.selected {
+            background-color: #e3f2fd;
+            border-color: #1e88e5;
+        }
+        
+        .amount-edit {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .amount-input {
+            width: 150px;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        .btn-update {
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .vehicle-details {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 6px;
+        }
+        
         @media (max-width: 768px) {
             .form-group, .form-field {
                 min-width: 100%;
@@ -412,6 +491,15 @@
             .saved-result-actions {
                 width: 100%;
                 justify-content: flex-end;
+            }
+            
+            .amount-edit {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .amount-input {
+                width: 100%;
             }
         }
         
@@ -1107,38 +1195,105 @@
                         However, transport records are available below.
                     `;
                     resultsContent.appendChild(warningDiv);
+                    
+                    // Display transport details
+                    displayTransportDetails(searchValue, transportRecords);
                 } else {
                     // No vendor details and no transport records
                     resultsContent.innerHTML = '<div class="no-results">No vendor details found for vehicle number: ' + searchValue + '</div>';
                 }
             } else {
-                // Display vendor details
+                // Group results by vendor
+                const vendorGroups = {};
+                
                 results.forEach(vehicle => {
-                    const resultDiv = document.createElement('div');
-                    resultDiv.className = 'result-item';
+                    const vendorKey = vehicle.partyName + '|' + vehicle.pan;
+                    if (!vendorGroups[vendorKey]) {
+                        vendorGroups[vendorKey] = {
+                            vendor: vehicle,
+                            vehicles: []
+                        };
+                    }
                     
-                    resultDiv.innerHTML = `
-                        <div class="result-title">Party Name: ${vehicle.partyName}</div>
-                        <div><strong>Bank Account No.:</strong> ${vehicle.accountNo}</div>
-                        <div><strong>Bank Name & Branch:</strong> ${vehicle.bankName}</div>
-                        <div><strong>Beneficiary:</strong> ${vehicle.beneficiary}</div>
-                        <div><strong>PAN:</strong> ${vehicle.pan}</div>
-                        <div><strong>Vehicle Numbers:</strong> ${vehicle.vehicleNumbers.join(', ')}</div>
+                    // Add all vehicles for this vendor
+                    vehicle.vehicleNumbers.forEach(vehicleNumber => {
+                        if (!vendorGroups[vendorKey].vehicles.includes(vehicleNumber)) {
+                            vendorGroups[vendorKey].vehicles.push(vehicleNumber);
+                        }
+                    });
+                });
+                
+                // Display vendor groups
+                Object.values(vendorGroups).forEach((group, index) => {
+                    const vendorGroupDiv = document.createElement('div');
+                    vendorGroupDiv.className = 'vendor-group';
+                    
+                    const vendorHeader = document.createElement('div');
+                    vendorHeader.className = 'vendor-header';
+                    vendorHeader.innerHTML = `
+                        <div>
+                            <div class="result-title">${group.vendor.partyName}</div>
+                            <div><strong>PAN:</strong> ${group.vendor.pan}</div>
+                        </div>
+                        <div>${group.vehicles.length} Vehicles</div>
                     `;
                     
-                    resultsContent.appendChild(resultDiv);
+                    const vendorVehicles = document.createElement('div');
+                    vendorVehicles.className = 'vendor-vehicles';
+                    vendorVehicles.id = `vendorVehicles${index}`;
+                    
+                    // Add vehicle options
+                    group.vehicles.forEach(vehicleNumber => {
+                        const vehicleOption = document.createElement('div');
+                        vehicleOption.className = 'vehicle-option';
+                        if (vehicleNumber === searchValue) {
+                            vehicleOption.classList.add('selected');
+                        }
+                        vehicleOption.textContent = vehicleNumber;
+                        vehicleOption.addEventListener('click', function() {
+                            // Remove selected class from all options
+                            vendorVehicles.querySelectorAll('.vehicle-option').forEach(option => {
+                                option.classList.remove('selected');
+                            });
+                            // Add selected class to clicked option
+                            this.classList.add('selected');
+                            // Search for this vehicle
+                            document.getElementById('vehicleSearch').value = vehicleNumber;
+                            searchVehicle();
+                        });
+                        vendorVehicles.appendChild(vehicleOption);
+                    });
+                    
+                    // Toggle vendor vehicles on header click
+                    vendorHeader.addEventListener('click', function() {
+                        vendorVehicles.classList.toggle('expanded');
+                    });
+                    
+                    vendorGroupDiv.appendChild(vendorHeader);
+                    vendorGroupDiv.appendChild(vendorVehicles);
+                    resultsContent.appendChild(vendorGroupDiv);
+                    
+                    // Display vendor details
+                    const vendorDetailsDiv = document.createElement('div');
+                    vendorDetailsDiv.className = 'result-item';
+                    vendorDetailsDiv.innerHTML = `
+                        <div><strong>Bank Account No.:</strong> ${group.vendor.accountNo}</div>
+                        <div><strong>Bank Name & Branch:</strong> ${group.vendor.bankName}</div>
+                        <div><strong>Beneficiary:</strong> ${group.vendor.beneficiary}</div>
+                    `;
+                    resultsContent.appendChild(vendorDetailsDiv);
                 });
-            }
-            
-            // Always display transport details if available
-            if (transportRecords.length > 0) {
-                displayTransportDetails(searchValue, transportRecords);
-            } else if (results.length > 0) {
-                // If we have vendor details but no transport records
-                const noTransportDiv = document.createElement('div');
-                noTransportDiv.className = 'no-results';
-                noTransportDiv.textContent = 'No transport records found for this vehicle.';
-                resultsContent.appendChild(noTransportDiv);
+                
+                // Display transport details for the searched vehicle
+                if (transportRecords.length > 0) {
+                    displayTransportDetails(searchValue, transportRecords);
+                } else {
+                    // If we have vendor details but no transport records
+                    const noTransportDiv = document.createElement('div');
+                    noTransportDiv.className = 'no-results';
+                    noTransportDiv.textContent = 'No transport records found for this vehicle.';
+                    resultsContent.appendChild(noTransportDiv);
+                }
             }
             
             resultsSection.style.display = 'block';
@@ -1175,6 +1330,11 @@
                     </tbody>
                 </table>
                 <div class="summary" id="transportSummary">
+                </div>
+                <div class="amount-edit">
+                    <label for="manualAmount">Manual Total Amount:</label>
+                    <input type="number" id="manualAmount" class="amount-input" placeholder="Enter amount">
+                    <button type="button" class="btn-update" onclick="updateTotalAmount()">Update Total</button>
                 </div>
             `;
             
@@ -1214,9 +1374,35 @@
                 Total Transport Amount: ${totalAmount.toFixed(2)}
             `;
             
+            // Set manual amount input
+            document.getElementById('manualAmount').value = totalAmount.toFixed(2);
+            
             // Update current search with total amount
             window.currentSearch.totalAmount = totalAmount;
             window.currentSearch.recordCount = transportRecords.length;
+        }
+
+        // Update total amount manually
+        function updateTotalAmount() {
+            const manualAmount = parseFloat(document.getElementById('manualAmount').value);
+            
+            if (isNaN(manualAmount)) {
+                alert('Please enter a valid amount');
+                return;
+            }
+            
+            // Update summary display
+            const summaryDiv = document.getElementById('transportSummary');
+            const recordCount = window.currentSearch.recordCount || 0;
+            summaryDiv.innerHTML = `
+                Total Rows: ${recordCount}<br>
+                Total Transport Amount: ${manualAmount.toFixed(2)}
+            `;
+            
+            // Update current search
+            window.currentSearch.totalAmount = manualAmount;
+            
+            alert('Total amount updated successfully!');
         }
 
         // Save current result to the saved results list
@@ -1284,10 +1470,15 @@
                     ? result.vendorDetails[0].partyName 
                     : 'Vendor details not found';
                 
+                const panNumber = result.vendorDetails.length > 0 
+                    ? result.vendorDetails[0].pan 
+                    : 'N/A';
+                
                 savedItem.innerHTML = `
                     <div class="saved-result-info">
                         <div class="result-title">${result.vehicleNumber}</div>
                         <div><strong>Vendor:</strong> ${vendorName}</div>
+                        <div><strong>PAN:</strong> ${panNumber}</div>
                         <div><strong>Records:</strong> ${result.recordCount || 0} transactions</div>
                         <div><strong>Total Amount:</strong> ${(result.totalAmount || 0).toFixed(2)}</div>
                     </div>
@@ -1354,7 +1545,7 @@
             
             // Prepare data for the summary sheet
             const summaryData = [
-                ['Vehicle Number', 'Vendor Name', 'Account Number', 'Bank Name', 'Beneficiary', 'PAN', 'Total Records', 'Total Amount']
+                ['Vehicle Number', 'Vendor Name', 'PAN', 'Account Number', 'Bank Name', 'Beneficiary', 'Total Records', 'Total Amount']
             ];
             
             savedResults.forEach(result => {
@@ -1363,10 +1554,10 @@
                 summaryData.push([
                     result.vehicleNumber,
                     vendor ? vendor.partyName : 'Not Found',
+                    vendor ? vendor.pan : 'N/A',
                     vendor ? vendor.accountNo : 'N/A',
                     vendor ? vendor.bankName : 'N/A',
                     vendor ? vendor.beneficiary : 'N/A',
-                    vendor ? vendor.pan : 'N/A',
                     result.recordCount || 0,
                     result.totalAmount || 0
                 ]);
