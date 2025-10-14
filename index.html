@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Transporter Details September</title>
+    <title>September Transport Billing System</title>
     <style>
-        /* All your existing CSS styles remain the same */
         * {
             box-sizing: border-box;
             margin: 0;
@@ -617,15 +616,23 @@
     </div>
 
     <script>
-        // Vehicle data
+        // Complete vehicle data with all transporters and their vehicle numbers
         let vehicleData = [
             {
-                partyName: "YARA GOVIND RAO",
+                partyName: "YARA GOVIND RAO  - BT -2",
                 accountNo: "29611100003742",
                 bankName: "DCB Bank, Anakapalli",
                 beneficiary: "YARA GOVIND RAO",
                 pan: "AYBPY0969R",
-                vehicleNumbers: ["AP39UY3435", "AP39UY3345"]
+                vehicleNumbers: ["AP39UY3435"]
+            },
+            {
+                partyName: "YERRA BHAGYA LAKSHMI - BT- 1",
+                accountNo: "42084751220",
+                bankName: "SBI, Ankapalli",
+                beneficiary: "YERRA BHAGYA LAKSHMI",
+                pan: "FRCPB8273A",
+                vehicleNumbers: ["AP39UY3345"]
             },
             {
                 partyName: "GADASALA SHIVA",
@@ -665,7 +672,7 @@
                 bankName: "Indian Bank Anakapalle",
                 beneficiary: "MONDEPU GOPI",
                 pan: "GDAPM7595D",
-                vehicleNumbers: []
+                vehicleNumbers: ["AP39W5005", "AP39UJ5678"]
             },
             {
                 partyName: "SRI VARDHAN TRANSPORT",
@@ -681,7 +688,7 @@
                 bankName: "SBI, Anakapalle",
                 beneficiary: "P.N.K.A Ananda Rao",
                 pan: "CHOPP3166M",
-                vehicleNumbers: ["AP39UF3245"]
+                vehicleNumbers: ["AP39UF3245", "AP05TH2345", "AP39UP9239", "AP39WC9149"]
             },
             {
                 partyName: "LAKSHMI SRINIVASA TRANSPORT",
@@ -697,7 +704,7 @@
                 bankName: "Indian Overseas Bank-Anakapalli",
                 beneficiary: "POLNATI RAMU",
                 pan: "AMEPP6405E",
-                vehicleNumbers: ["AP39TV2536"]
+                vehicleNumbers: ["AP39TV2536", "AP39WB2536", "AP39WD2536"]
             },
             {
                 partyName: "POLNATI LAKSHMANA",
@@ -721,7 +728,7 @@
                 bankName: "SBI, Anakapalle",
                 beneficiary: "N.Narisinga Rao",
                 pan: "APCPN4125N",
-                vehicleNumbers: []
+                vehicleNumbers: ["AP39VE2979"]
             },
             {
                 partyName: "Sri Balaji Transport",
@@ -737,7 +744,7 @@
                 bankName: "ICICI, Anakapalle",
                 beneficiary: "NAMMI SUNITHA",
                 pan: "BMHPB1489C",
-                vehicleNumbers: []
+                vehicleNumbers: ["AP39VC5289", "AP39UW2589"]
             },
             {
                 partyName: "Sri Venkata Durga Lorry service",
@@ -753,10 +760,10 @@
                 bankName: "SBI",
                 beneficiary: "Mummina Srinu",
                 pan: "NIEPS1843A",
-                vehicleNumbers: []
+                vehicleNumbers: ["AP39UZ3659"]
             },
             {
-                partyName: "LANKA NAGESWARA RAO",
+                partyName: "SRI  MODAMAMBA LORRY TRANSPORT",
                 accountNo: "386602010025075",
                 bankName: "UNION BANK",
                 beneficiary: "Lanka Nageswara Rao",
@@ -850,6 +857,38 @@
                 beneficiary: "KARANAM A SRINIVASARAO",
                 pan: "PJFPS1223C",
                 vehicleNumbers: []
+            },
+            {
+                partyName: "SIRI BUILDTECH",
+                accountNo: "10230601834",
+                bankName: "IDFC FIRST BANK",
+                beneficiary: "Kondala Rao",
+                pan: "CCAPK6960M",
+                vehicleNumbers: ["AP39WH 3659"]
+            },
+            {
+                partyName: "DURGALAMMATALLI LORRY SERVICE",
+                accountNo: "32949321587",
+                bankName: "SBI ANAKAPALLE",
+                beneficiary: "DASARI GOVINDA",
+                pan: "CMJPD4773Q",
+                vehicleNumbers: ["AP39WE9299", "AP39UM4767"]
+            },
+            {
+                partyName: "SREE MODHAMAMBHA TRANSPORT",
+                accountNo: "386602010026387",
+                bankName: "UNION BANK",
+                beneficiary: "B HEMANTH KUMAR",
+                pan: "CEGPB5646M",
+                vehicleNumbers: ["AP39WH2769", "AP39WH1869"]
+            },
+            {
+                partyName: "SRI PYDIMAMBA LORRY SERVICES",
+                accountNo: "39080100013298",
+                bankName: "BANK OF BARODA",
+                beneficiary: "LOKIREDDI NAGABABU",
+                pan: "CNZPN5078D",
+                vehicleNumbers: ["AP39UV2345", "AP39UN3335", "AP39WE2345", "AP39VD5226", "AP39TU2489", "AP39WE3339", "AP39UD2345", "AP39UZ2345", "AP39W7119"]
             }
         ];
 
