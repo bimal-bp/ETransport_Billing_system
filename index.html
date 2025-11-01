@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>September Transport Billing System</title>
+    <title>October Transport Billing System</title>
     <style>
+        /* All existing styles remain the same */
         * {
             box-sizing: border-box;
             margin: 0;
@@ -290,6 +291,44 @@
             background-color: #f5f5f5;
         }
         
+        /* NEW: Summary box styles */
+        .summary-box {
+            background-color: #e8f5e9;
+            border: 2px solid #4caf50;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .summary-item {
+            text-align: center;
+            flex: 1;
+        }
+        
+        .summary-label {
+            font-size: 14px;
+            color: #2e7d32;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+        
+        .summary-value {
+            font-size: 24px;
+            color: #1b5e20;
+            font-weight: 700;
+        }
+        
+        .summary-divider {
+            width: 2px;
+            height: 50px;
+            background-color: #4caf50;
+            margin: 0 20px;
+        }
+        
         .summary {
             margin-top: 20px;
             padding: 15px;
@@ -499,6 +538,18 @@
             
             .amount-input {
                 width: 100%;
+            }
+            
+            /* NEW: Responsive styles for summary box */
+            .summary-box {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .summary-divider {
+                width: 100%;
+                height: 2px;
+                margin: 10px 0;
             }
         }
         
@@ -1360,7 +1411,21 @@
                     <tbody id="transportTableBody">
                     </tbody>
                 </table>
-                <div class="summary" id="transportSummary">
+                <div class="summary-box" id="summaryBox">
+                    <div class="summary-item">
+                        <div class="summary-label">Total Records</div>
+                        <div class="summary-value" id="totalRecords">0</div>
+                    </div>
+                    <div class="summary-divider"></div>
+                    <div class="summary-item">
+                        <div class="summary-label">Total Quantity</div>
+                        <div class="summary-value" id="totalQuantity">0</div>
+                    </div>
+                    <div class="summary-divider"></div>
+                    <div class="summary-item">
+                        <div class="summary-label">Total Amount</div>
+                        <div class="summary-value" id="totalAmount">0.00</div>
+                    </div>
                 </div>
                 <div class="amount-edit">
                     <label for="manualAmount">Manual Total Amount:</label>
@@ -1374,6 +1439,7 @@
             // Populate table rows
             const tableBody = document.getElementById('transportTableBody');
             let totalAmount = 0;
+            let totalQuantity = 0;
             
             transportRecords.forEach(record => {
                 const row = document.createElement('tr');
@@ -1396,20 +1462,23 @@
                 // Calculate total amount
                 const amount = parseFloat(record['Transport Amount']) || 0;
                 totalAmount += amount;
+                
+                // Calculate total quantity
+                const quantity = parseFloat(record['NET WT']) || 0;
+                totalQuantity += quantity;
             });
             
-            // Display summary
-            const summaryDiv = document.getElementById('transportSummary');
-            summaryDiv.innerHTML = `
-                Total Rows: ${transportRecords.length}<br>
-                Total Transport Amount: ${totalAmount.toFixed(2)}
-            `;
+            // Update summary box
+            document.getElementById('totalRecords').textContent = transportRecords.length;
+            document.getElementById('totalQuantity').textContent = totalQuantity.toFixed(2);
+            document.getElementById('totalAmount').textContent = totalAmount.toFixed(2);
             
             // Set manual amount input
             document.getElementById('manualAmount').value = totalAmount.toFixed(2);
             
-            // Update current search with total amount
+            // Update current search with totals
             window.currentSearch.totalAmount = totalAmount;
+            window.currentSearch.totalQuantity = totalQuantity;
             window.currentSearch.recordCount = transportRecords.length;
         }
 
@@ -1422,13 +1491,8 @@
                 return;
             }
             
-            // Update summary display
-            const summaryDiv = document.getElementById('transportSummary');
-            const recordCount = window.currentSearch.recordCount || 0;
-            summaryDiv.innerHTML = `
-                Total Rows: ${recordCount}<br>
-                Total Transport Amount: ${manualAmount.toFixed(2)}
-            `;
+            // Update summary box
+            document.getElementById('totalAmount').textContent = manualAmount.toFixed(2);
             
             // Update current search
             window.currentSearch.totalAmount = manualAmount;
@@ -1511,6 +1575,7 @@
                         <div><strong>Vendor:</strong> ${vendorName}</div>
                         <div><strong>PAN:</strong> ${panNumber}</div>
                         <div><strong>Records:</strong> ${result.recordCount || 0} transactions</div>
+                        <div><strong>Total Quantity:</strong> ${(result.totalQuantity || 0).toFixed(2)}</div>
                         <div><strong>Total Amount:</strong> ${(result.totalAmount || 0).toFixed(2)}</div>
                     </div>
                     <div class="saved-result-actions">
@@ -1576,7 +1641,7 @@
             
             // Prepare data for the summary sheet
             const summaryData = [
-                ['Vehicle Number', 'Vendor Name', 'PAN', 'Account Number', 'Bank Name', 'Beneficiary', 'Total Records', 'Total Amount']
+                ['Vehicle Number', 'Vendor Name', 'PAN', 'Account Number', 'Bank Name', 'Beneficiary', 'Total Records', 'Total Quantity', 'Total Amount']
             ];
             
             savedResults.forEach(result => {
@@ -1590,6 +1655,7 @@
                     vendor ? vendor.bankName : 'N/A',
                     vendor ? vendor.beneficiary : 'N/A',
                     result.recordCount || 0,
+                    result.totalQuantity || 0,
                     result.totalAmount || 0
                 ]);
             });
@@ -1620,6 +1686,7 @@
                     // Add summary row
                     detailData.push([]);
                     detailData.push(['Total Records:', result.recordCount || 0]);
+                    detailData.push(['Total Quantity:', result.totalQuantity || 0]);
                     detailData.push(['Total Amount:', result.totalAmount || 0]);
                     
                     const detailWs = XLSX.utils.aoa_to_sheet(detailData);
