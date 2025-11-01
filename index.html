@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1590,14 +1591,7 @@
             window.currentSearch = {
                 vehicleNumber: searchValue,
                 vendorDetails: results,
-                transportRecords: [],
-                allVendorVehicles: [],
-                vendorTotals: {
-                    totalVehicles: 0,
-                    totalRecords: 0,
-                    totalQuantity: 0,
-                    totalAmount: 0
-                }
+                transportRecords: []
             };
             
             // Check if vehicle has transport records
@@ -1645,14 +1639,6 @@
                         }
                     });
                 });
-                
-                // Store all vendor vehicles for current search
-                Object.values(vendorGroups).forEach(group => {
-                    window.currentSearch.allVendorVehicles = window.currentSearch.allVendorVehicles.concat(group.vehicles);
-                });
-                
-                // Remove duplicates
-                window.currentSearch.allVendorVehicles = [...new Set(window.currentSearch.allVendorVehicles)];
                 
                 // Display vendor groups
                 Object.values(vendorGroups).forEach((group, index) => {
@@ -1758,12 +1744,6 @@
                 });
             });
             
-            // Update current search vendor totals
-            window.currentSearch.vendorTotals.totalVehicles = vehicleNumbers.length;
-            window.currentSearch.vendorTotals.totalRecords = vendorTotalRecords;
-            window.currentSearch.vendorTotals.totalQuantity = vendorTotalQuantity;
-            window.currentSearch.vendorTotals.totalAmount = vendorTotalAmount;
-            
             // Create vendor total summary
             const vendorSummaryDiv = document.createElement('div');
             vendorSummaryDiv.className = 'vendor-total-summary';
@@ -1797,6 +1777,11 @@
                     displayTransportDetails(vehicleData.vehicleNumber, vehicleData.records);
                 }
             });
+            
+            // Update current search with vendor totals
+            window.currentSearch.vendorTotalRecords = vendorTotalRecords;
+            window.currentSearch.vendorTotalQuantity = vendorTotalQuantity;
+            window.currentSearch.vendorTotalAmount = vendorTotalAmount;
         }
 
         // Display transport details
@@ -1915,7 +1900,7 @@
             alert('Total amount updated successfully!');
         }
 
-        // Save current result to the saved results list - FIXED: Now saves all vendor vehicles data
+        // Save current result to the saved results list - FIXED: Ensure totalQuantity is properly saved
         function saveCurrentResult() {
             if (!window.currentSearch) {
                 alert('No search results to save');
@@ -1924,55 +1909,27 @@
             
             const searchValue = window.currentSearch.vehicleNumber;
             
-            // Get transport records for ALL vehicles of the vendor, not just the searched one
-            let allVendorTransportRecords = [];
-            let vendorTotalRecords = 0;
-            let vendorTotalQuantity = 0;
-            let vendorTotalAmount = 0;
+            // Recalculate totals to ensure accuracy
+            let totalAmount = 0;
+            let totalQuantity = 0;
             
-            if (window.currentSearch.allVendorVehicles && window.currentSearch.allVendorVehicles.length > 0) {
-                window.currentSearch.allVendorVehicles.forEach(vehicleNumber => {
-                    const vehicleRecords = transportData.filter(record => {
-                        const recordVehicleNo = record['VEHICLE NO'] ? record['VEHICLE NO'].toString().trim().toUpperCase() : '';
-                        return recordVehicleNo === vehicleNumber;
-                    });
+            if (window.currentSearch.transportRecords && window.currentSearch.transportRecords.length > 0) {
+                window.currentSearch.transportRecords.forEach(record => {
+                    const amount = parseFloat(record['Transport Amount']) || 0;
+                    totalAmount += amount;
                     
-                    // Add to all records
-                    allVendorTransportRecords = allVendorTransportRecords.concat(vehicleRecords);
-                    
-                    // Calculate totals for this vehicle
-                    vehicleRecords.forEach(record => {
-                        vendorTotalRecords++;
-                        
-                        // Calculate quantity
-                        const quantity = parseFloat(record['NET WT']) || 0;
-                        vendorTotalQuantity += quantity;
-                        
-                        // Calculate amount
-                        const amount = parseFloat(record['Transport Amount']) || 0;
-                        vendorTotalAmount += amount;
-                    });
+                    const quantity = parseFloat(record['NET WT']) || 0;
+                    totalQuantity += quantity;
                 });
             }
             
-            // Update current search with all vendor data
-            window.currentSearch.allVendorTransportRecords = allVendorTransportRecords;
-            window.currentSearch.vendorTotals.totalRecords = vendorTotalRecords;
-            window.currentSearch.vendorTotals.totalQuantity = vendorTotalQuantity;
-            window.currentSearch.vendorTotals.totalAmount = vendorTotalAmount;
+            // Update current search with recalculated totals
+            window.currentSearch.totalAmount = totalAmount;
+            window.currentSearch.totalQuantity = totalQuantity;
+            window.currentSearch.recordCount = window.currentSearch.transportRecords.length;
             
-            // Check if this vendor is already in saved results
-            const vendorKey = window.currentSearch.vendorDetails.length > 0 
-                ? window.currentSearch.vendorDetails[0].partyName + '|' + window.currentSearch.vendorDetails[0].pan
-                : searchValue;
-                
-            const existingIndex = savedResults.findIndex(result => {
-                if (result.vendorDetails.length > 0) {
-                    const resultVendorKey = result.vendorDetails[0].partyName + '|' + result.vendorDetails[0].pan;
-                    return resultVendorKey === vendorKey;
-                }
-                return result.vehicleNumber === searchValue;
-            });
+            // Check if this vehicle is already in saved results
+            const existingIndex = savedResults.findIndex(result => result.vehicleNumber === searchValue);
             
             if (existingIndex !== -1) {
                 // Update existing entry
@@ -2031,17 +1988,16 @@
                     ? result.vendorDetails[0].pan 
                     : 'N/A';
                 
-                // Use vendor totals if available
-                const totalVehicles = result.vendorTotals.totalVehicles || result.allVendorVehicles?.length || 1;
-                const totalRecords = result.vendorTotals.totalRecords || result.recordCount || 0;
-                const totalQuantity = result.vendorTotals.totalQuantity || result.totalQuantity || 0;
-                const totalAmount = result.vendorTotals.totalAmount || result.totalAmount || 0;
+                // Check if we have vendor totals
+                const totalRecords = result.vendorTotalRecords || result.recordCount || 0;
+                const totalQuantity = result.vendorTotalQuantity || result.totalQuantity || 0;
+                const totalAmount = result.vendorTotalAmount || result.totalAmount || 0;
                 
                 savedItem.innerHTML = `
                     <div class="saved-result-info">
-                        <div class="result-title">${vendorName}</div>
+                        <div class="result-title">${result.vehicleNumber}</div>
+                        <div><strong>Vendor:</strong> ${vendorName}</div>
                         <div><strong>PAN:</strong> ${panNumber}</div>
-                        <div><strong>Vehicles:</strong> ${totalVehicles}</div>
                         <div><strong>Records:</strong> ${totalRecords} transactions</div>
                         <div><strong>Total Quantity:</strong> ${totalQuantity.toFixed(2)}</div>
                         <div><strong>Total Amount:</strong> ₹${totalAmount.toFixed(2)}</div>
@@ -2062,15 +2018,11 @@
             
             const result = savedResults[index];
             
-            // Set the search input to the first vehicle
-            const firstVehicle = result.allVendorVehicles && result.allVendorVehicles.length > 0 
-                ? result.allVendorVehicles[0] 
-                : result.vehicleNumber;
-                
-            document.getElementById('vehicleSearch').value = firstVehicle;
+            // Set the search input
+            document.getElementById('vehicleSearch').value = result.vehicleNumber;
             
             // Display the results
-            displayResults(result.vendorDetails, firstVehicle);
+            displayResults(result.vendorDetails, result.vehicleNumber);
             
             // Scroll to results
             document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth' });
@@ -2101,7 +2053,7 @@
             }
         }
 
-        // Download saved results as Excel file - FIXED: Now exports data for all vehicles of each vendor
+        // Download saved results as Excel file
         function downloadSavedResults() {
             if (savedResults.length === 0) {
                 alert('No saved results to download');
@@ -2113,25 +2065,24 @@
             
             // Prepare data for the summary sheet
             const summaryData = [
-                ['Vendor Name', 'PAN', 'Account Number', 'Bank Name', 'Beneficiary', 'Total Vehicles', 'Total Records', 'Total Quantity', 'Total Amount']
+                ['Vehicle Number', 'Vendor Name', 'PAN', 'Account Number', 'Bank Name', 'Beneficiary', 'Total Records', 'Total Quantity', 'Total Amount']
             ];
             
             savedResults.forEach(result => {
                 const vendor = result.vendorDetails.length > 0 ? result.vendorDetails[0] : null;
                 
-                // Use vendor totals
-                const totalVehicles = result.vendorTotals.totalVehicles || result.allVendorVehicles?.length || 1;
-                const totalRecords = result.vendorTotals.totalRecords || result.recordCount || 0;
-                const totalQuantity = result.vendorTotals.totalQuantity || result.totalQuantity || 0;
-                const totalAmount = result.vendorTotals.totalAmount || result.totalAmount || 0;
+                // Use vendor totals if available
+                const totalRecords = result.vendorTotalRecords || result.recordCount || 0;
+                const totalQuantity = result.vendorTotalQuantity || result.totalQuantity || 0;
+                const totalAmount = result.vendorTotalAmount || result.totalAmount || 0;
                 
                 summaryData.push([
+                    result.vehicleNumber,
                     vendor ? vendor.partyName : 'Not Found',
                     vendor ? vendor.pan : 'N/A',
                     vendor ? vendor.accountNo : 'N/A',
                     vendor ? vendor.bankName : 'N/A',
                     vendor ? vendor.beneficiary : 'N/A',
-                    totalVehicles,
                     totalRecords,
                     totalQuantity,
                     totalAmount
@@ -2142,35 +2093,14 @@
             const summaryWs = XLSX.utils.aoa_to_sheet(summaryData);
             XLSX.utils.book_append_sheet(wb, summaryWs, 'Summary');
             
-            // Create detailed worksheets for each saved vendor (not just vehicle)
+            // Create detailed worksheets for each saved result
             savedResults.forEach((result, index) => {
-                const vendor = result.vendorDetails.length > 0 ? result.vendorDetails[0] : null;
-                const vendorName = vendor ? vendor.partyName.replace(/[^\w\s]/gi, '') : `Vendor_${index + 1}`;
-                
-                // Get ALL transport records for ALL vehicles of this vendor
-                let allVendorRecords = [];
-                if (result.allVendorTransportRecords && result.allVendorTransportRecords.length > 0) {
-                    allVendorRecords = result.allVendorTransportRecords;
-                } else if (result.allVendorVehicles && result.allVendorVehicles.length > 0) {
-                    // If we don't have the records pre-calculated, get them now
-                    result.allVendorVehicles.forEach(vehicleNumber => {
-                        const vehicleRecords = transportData.filter(record => {
-                            const recordVehicleNo = record['VEHICLE NO'] ? record['VEHICLE NO'].toString().trim().toUpperCase() : '';
-                            return recordVehicleNo === vehicleNumber;
-                        });
-                        allVendorRecords = allVendorRecords.concat(vehicleRecords);
-                    });
-                } else {
-                    // Fallback to just the searched vehicle
-                    allVendorRecords = result.transportRecords || [];
-                }
-                
-                if (allVendorRecords.length > 0) {
+                if (result.transportRecords.length > 0) {
                     const detailData = [
                         ['Accounting Date', 'Customer Name', 'Vehicle No', 'Material', 'Net Weight', 'Transport Rate', 'Transport Amount']
                     ];
                     
-                    allVendorRecords.forEach(record => {
+                    result.transportRecords.forEach(record => {
                         detailData.push([
                             formatDateForDisplay(record['Accounting Date']),
                             record['NAME OF THE CUSTOMER'] || '',
@@ -2182,21 +2112,19 @@
                         ]);
                     });
                     
-                    // Add summary rows
+                    // Add summary row
                     detailData.push([]);
-                    detailData.push(['Vendor Summary:', '']);
-                    detailData.push(['Total Vehicles:', result.vendorTotals.totalVehicles || result.allVendorVehicles?.length || 1]);
-                    detailData.push(['Total Records:', result.vendorTotals.totalRecords || result.recordCount || 0]);
-                    detailData.push(['Total Quantity:', result.vendorTotals.totalQuantity || result.totalQuantity || 0]);
-                    detailData.push(['Total Amount:', result.vendorTotals.totalAmount || result.totalAmount || 0]);
+                    detailData.push(['Total Records:', result.recordCount || 0]);
+                    detailData.push(['Total Quantity:', result.totalQuantity || 0]);
+                    detailData.push(['Total Amount:', result.totalAmount || 0]);
                     
                     const detailWs = XLSX.utils.aoa_to_sheet(detailData);
-                    XLSX.utils.book_append_sheet(wb, detailWs, vendorName.substring(0, 31)); // Sheet name max 31 chars
+                    XLSX.utils.book_append_sheet(wb, detailWs, result.vehicleNumber);
                 }
             });
             
             // Generate and download the file
-            const fileName = `Transport_Vendor_Results_${new Date().toISOString().split('T')[0]}.xlsx`;
+            const fileName = `Transport_Results_${new Date().toISOString().split('T')[0]}.xlsx`;
             XLSX.writeFile(wb, fileName);
         }
 
