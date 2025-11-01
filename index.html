@@ -824,9 +824,34 @@
                     </div>
                 </div>
             </div>
-
             
+            <div class="dashboard-section">
+                <div class="dashboard-section-title">Product Breakdown</div>
+                <div class="dashboard-summary-box">
+                    <div class="product-breakdown" id="productBreakdown">
+                        <div class="product-item">
+                            <div class="product-name">Loading...</div>
+                            <div class="product-qty">-</div>
+                            <div class="product-amount">-</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
             
+            <div class="dashboard-section">
+                <div class="dashboard-section-title">Top Vehicles</div>
+                <div class="dashboard-summary-box">
+                    <div class="product-breakdown" id="topVehicles">
+                        <div class="product-item">
+                            <div class="product-name">Loading...</div>
+                            <div class="product-qty">-</div>
+                            <div class="product-amount">-</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <button type="button" class="dashboard-refresh" onclick="updateDashboard()">Refresh Dashboard</button>
         </div>
     </div>
 
@@ -1204,61 +1229,77 @@
             console.log('Transport data loaded:', transportData.length, 'records');
         }
 
-        // NEW: Update dashboard with summary data
-function updateDashboard() {
-    if (transportData.length === 0) {
-        document.getElementById('totalVehicles').textContent = '0';
-        document.getElementById('totalQuantity').textContent = '0.00';
-        document.getElementById('totalAmount').textContent = '₹0.00';
-        return;
-    }
-    
-    // Calculate overall totals
-    let totalVehicles = new Set();
-    let totalQuantity = 0;
-    let totalAmount = 0;
-    
-    transportData.forEach(record => {
-        // Add vehicle to set
-        const vehicleNo = record['VEHICLE NO'] ? record['VEHICLE NO'].toString().trim().toUpperCase() : '';
-        if (vehicleNo) {
-            totalVehicles.add(vehicleNo);
-        }
-        
-        // Calculate quantity - FIXED: Properly parse NET WT values
-        let quantity = 0;
-        const netWt = record['NET WT'];
-        if (netWt !== undefined && netWt !== null && netWt !== '') {
-            // Convert to string and remove any non-numeric characters except decimal point
-            const netWtStr = netWt.toString().trim();
-            // Parse the numeric value
-            quantity = parseFloat(netWtStr) || 0;
-        }
-        totalQuantity += quantity;
-        
-        // Calculate amount - FIXED: Properly parse Transport Amount values
-        let amount = 0;
-        const transportAmount = record['Transport Amount'];
-        if (transportAmount !== undefined && transportAmount !== null && transportAmount !== '') {
-            // Convert to string and remove any non-numeric characters except decimal point
-            const amountStr = transportAmount.toString().trim();
-            // Parse the numeric value
-            amount = parseFloat(amountStr) || 0;
-        }
-        totalAmount += amount;
-    });
-    
-    // Update overall summary
-    document.getElementById('totalVehicles').textContent = totalVehicles.size;
-    document.getElementById('totalQuantity').textContent = totalQuantity.toFixed(2);
-    document.getElementById('totalAmount').textContent = `₹${totalAmount.toFixed(2)}`;
-    
-    console.log('Dashboard updated:', {
-        totalVehicles: totalVehicles.size,
-        totalQuantity: totalQuantity,
-        totalAmount: totalAmount
-    });
-}
+        // NEW: Update dashboard with summary data - FIXED VERSION
+        function updateDashboard() {
+            if (transportData.length === 0) {
+                document.getElementById('totalVehicles').textContent = '0';
+                document.getElementById('totalQuantity').textContent = '0.00';
+                document.getElementById('totalAmount').textContent = '₹0.00';
+                return;
+            }
+            
+            // Calculate overall totals
+            let totalVehicles = new Set();
+            let totalQuantity = 0;
+            let totalAmount = 0;
+            
+            // For breakdowns
+            let productBreakdown = {};
+            let vehicleBreakdown = {};
+            
+            transportData.forEach(record => {
+                // Add vehicle to set
+                const vehicleNo = record['VEHICLE NO'] ? record['VEHICLE NO'].toString().trim().toUpperCase() : '';
+                if (vehicleNo) {
+                    totalVehicles.add(vehicleNo);
+                    
+                    // Update vehicle breakdown
+                    if (!vehicleBreakdown[vehicleNo]) {
+                        vehicleBreakdown[vehicleNo] = { quantity: 0, amount: 0 };
+                    }
+                }
+                
+                // Calculate quantity - FIXED: Properly parse NET WT values
+                let quantity = 0;
+                const netWt = record['NET WT'];
+                if (netWt !== undefined && netWt !== null && netWt !== '') {
+                    // Convert to string and remove any non-numeric characters except decimal point
+                    const netWtStr = netWt.toString().trim();
+                    // Parse the numeric value
+                    quantity = parseFloat(netWtStr) || 0;
+                }
+                totalQuantity += quantity;
+                
+                // Calculate amount - FIXED: Properly parse Transport Amount values
+                let amount = 0;
+                const transportAmount = record['Transport Amount'];
+                if (transportAmount !== undefined && transportAmount !== null && transportAmount !== '') {
+                    // Convert to string and remove any non-numeric characters except decimal point
+                    const amountStr = transportAmount.toString().trim();
+                    // Parse the numeric value
+                    amount = parseFloat(amountStr) || 0;
+                }
+                totalAmount += amount;
+                
+                // Update product breakdown
+                const product = record['Material'] || 'Unknown';
+                if (!productBreakdown[product]) {
+                    productBreakdown[product] = { quantity: 0, amount: 0 };
+                }
+                productBreakdown[product].quantity += quantity;
+                productBreakdown[product].amount += amount;
+                
+                // Update vehicle breakdown
+                if (vehicleNo && vehicleBreakdown[vehicleNo]) {
+                    vehicleBreakdown[vehicleNo].quantity += quantity;
+                    vehicleBreakdown[vehicleNo].amount += amount;
+                }
+            });
+            
+            // Update overall summary
+            document.getElementById('totalVehicles').textContent = totalVehicles.size;
+            document.getElementById('totalQuantity').textContent = totalQuantity.toFixed(2);
+            document.getElementById('totalAmount').textContent = `₹${totalAmount.toFixed(2)}`;
             
             // Update product breakdown
             const productBreakdownElement = document.getElementById('productBreakdown');
@@ -1294,6 +1335,14 @@ function updateDashboard() {
                     <div class="product-amount">₹${data.amount.toFixed(2)}</div>
                 `;
                 topVehiclesElement.appendChild(vehicleItem);
+            });
+            
+            console.log('Dashboard updated:', {
+                totalVehicles: totalVehicles.size,
+                totalQuantity: totalQuantity,
+                totalAmount: totalAmount,
+                products: Object.keys(productBreakdown).length,
+                vehicles: Object.keys(vehicleBreakdown).length
             });
         }
 
