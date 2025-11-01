@@ -1205,73 +1205,60 @@
         }
 
         // NEW: Update dashboard with summary data
-        function updateDashboard() {
-            if (transportData.length === 0) {
-                document.getElementById('totalVehicles').textContent = '0';
-                document.getElementById('totalRecords').textContent = '0';
-                document.getElementById('totalQuantity').textContent = '0.00';
-                document.getElementById('totalAmount').textContent = '₹0.00';
-                document.getElementById('productBreakdown').innerHTML = '<div class="dashboard-loading">No data available</div>';
-                document.getElementById('topVehicles').innerHTML = '<div class="dashboard-loading">No data available</div>';
-                return;
-            }
-            
-            // Calculate overall totals
-            let totalVehicles = new Set();
-            let totalRecords = transportData.length;
-            let totalQuantity = 0;
-            let totalAmount = 0;
-            
-            // Calculate product breakdown
-            let productBreakdown = {};
-            let vehicleBreakdown = {};
-            
-            transportData.forEach(record => {
-                // Add vehicle to set
-                const vehicleNo = record['VEHICLE NO'] ? record['VEHICLE NO'].toString().trim().toUpperCase() : '';
-                if (vehicleNo) {
-                    totalVehicles.add(vehicleNo);
-                }
-                
-                // Calculate quantity
-                const quantity = parseFloat(record['NET WT']) || 0;
-                totalQuantity += quantity;
-                
-                // Calculate amount
-                const amount = parseFloat(record['Transport Amount']) || 0;
-                totalAmount += amount;
-                
-                // Product breakdown
-                const material = record['Material'] ? record['Material'].toString().trim() : 'Unknown';
-                if (!productBreakdown[material]) {
-                    productBreakdown[material] = {
-                        quantity: 0,
-                        amount: 0
-                    };
-                }
-                productBreakdown[material].quantity += quantity;
-                productBreakdown[material].amount += amount;
-                
-                // Vehicle breakdown
-                if (vehicleNo) {
-                    if (!vehicleBreakdown[vehicleNo]) {
-                        vehicleBreakdown[vehicleNo] = {
-                            quantity: 0,
-                            amount: 0,
-                            records: 0
-                        };
-                    }
-                    vehicleBreakdown[vehicleNo].quantity += quantity;
-                    vehicleBreakdown[vehicleNo].amount += amount;
-                    vehicleBreakdown[vehicleNo].records += 1;
-                }
-            });
-            
-            // Update overall summary
-            document.getElementById('totalVehicles').textContent = totalVehicles.size;
-            document.getElementById('totalRecords').textContent = totalRecords;
-            document.getElementById('totalQuantity').textContent = totalQuantity.toFixed(2);
-            document.getElementById('totalAmount').textContent = `₹${totalAmount.toFixed(2)}`;
+function updateDashboard() {
+    if (transportData.length === 0) {
+        document.getElementById('totalVehicles').textContent = '0';
+        document.getElementById('totalQuantity').textContent = '0.00';
+        document.getElementById('totalAmount').textContent = '₹0.00';
+        return;
+    }
+    
+    // Calculate overall totals
+    let totalVehicles = new Set();
+    let totalQuantity = 0;
+    let totalAmount = 0;
+    
+    transportData.forEach(record => {
+        // Add vehicle to set
+        const vehicleNo = record['VEHICLE NO'] ? record['VEHICLE NO'].toString().trim().toUpperCase() : '';
+        if (vehicleNo) {
+            totalVehicles.add(vehicleNo);
+        }
+        
+        // Calculate quantity - FIXED: Properly parse NET WT values
+        let quantity = 0;
+        const netWt = record['NET WT'];
+        if (netWt !== undefined && netWt !== null && netWt !== '') {
+            // Convert to string and remove any non-numeric characters except decimal point
+            const netWtStr = netWt.toString().trim();
+            // Parse the numeric value
+            quantity = parseFloat(netWtStr) || 0;
+        }
+        totalQuantity += quantity;
+        
+        // Calculate amount - FIXED: Properly parse Transport Amount values
+        let amount = 0;
+        const transportAmount = record['Transport Amount'];
+        if (transportAmount !== undefined && transportAmount !== null && transportAmount !== '') {
+            // Convert to string and remove any non-numeric characters except decimal point
+            const amountStr = transportAmount.toString().trim();
+            // Parse the numeric value
+            amount = parseFloat(amountStr) || 0;
+        }
+        totalAmount += amount;
+    });
+    
+    // Update overall summary
+    document.getElementById('totalVehicles').textContent = totalVehicles.size;
+    document.getElementById('totalQuantity').textContent = totalQuantity.toFixed(2);
+    document.getElementById('totalAmount').textContent = `₹${totalAmount.toFixed(2)}`;
+    
+    console.log('Dashboard updated:', {
+        totalVehicles: totalVehicles.size,
+        totalQuantity: totalQuantity,
+        totalAmount: totalAmount
+    });
+}
             
             // Update product breakdown
             const productBreakdownElement = document.getElementById('productBreakdown');
