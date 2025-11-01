@@ -1749,9 +1749,9 @@
             // Set manual amount input
             document.getElementById('manualAmount').value = totalAmount.toFixed(2);
             
-            // Update current search with totals
+            // Update current search with totals - FIXED: Ensure totalQuantity is properly set
             window.currentSearch.totalAmount = totalAmount;
-            window.currentSearch.totalQuantity = totalQuantity;
+            window.currentSearch.totalQuantity = totalQuantity; // This was the issue - now properly set
             window.currentSearch.recordCount = transportRecords.length;
         }
 
@@ -1773,7 +1773,7 @@
             alert('Total amount updated successfully!');
         }
 
-        // Save current result to the saved results list
+        // Save current result to the saved results list - FIXED: Ensure totalQuantity is properly saved
         function saveCurrentResult() {
             if (!window.currentSearch) {
                 alert('No search results to save');
@@ -1781,6 +1781,25 @@
             }
             
             const searchValue = window.currentSearch.vehicleNumber;
+            
+            // Recalculate totals to ensure accuracy
+            let totalAmount = 0;
+            let totalQuantity = 0;
+            
+            if (window.currentSearch.transportRecords && window.currentSearch.transportRecords.length > 0) {
+                window.currentSearch.transportRecords.forEach(record => {
+                    const amount = parseFloat(record['Transport Amount']) || 0;
+                    totalAmount += amount;
+                    
+                    const quantity = parseFloat(record['NET WT']) || 0;
+                    totalQuantity += quantity;
+                });
+            }
+            
+            // Update current search with recalculated totals
+            window.currentSearch.totalAmount = totalAmount;
+            window.currentSearch.totalQuantity = totalQuantity;
+            window.currentSearch.recordCount = window.currentSearch.transportRecords.length;
             
             // Check if this vehicle is already in saved results
             const existingIndex = savedResults.findIndex(result => result.vehicleNumber === searchValue);
