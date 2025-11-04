@@ -1424,7 +1424,7 @@
                         <div><strong>Vehicles:</strong> ${totals.totalVehicles}</div>
                         <div><strong>Records:</strong> ${totals.totalRecords}</div>
                         <div><strong>Qty:</strong> ${totals.totalQuantity.toFixed(2)}</div>
-                        <div><strong>Amount:</strong> ₹${totals.totalAmount.toFixed(2)}</div>
+                        <div><strong>Amount:</strong> ₹${formatIndianNumber(totals.totalAmount)}</div>
                     </div>
                     <div class="saved-result-actions">
                         <button type="button" class="btn-view" onclick="viewSavedResult(${i})">View</button>
