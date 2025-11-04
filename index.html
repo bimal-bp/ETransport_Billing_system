@@ -719,7 +719,6 @@
                 width: 100%;
             }
             
-            /* NEW: Responsive styles for summary box */
             .summary-box {
                 flex-direction: column;
                 gap: 15px;
@@ -1184,70 +1183,42 @@
                 const resultsContent = document.getElementById('resultsContent');
                 resultsContent.innerHTML = '<div class="loading">Loading transport data...</div>';
                 
-                // GitHub raw URL for the Excel file
                 const githubUrl = 'https://raw.githubusercontent.com/bimal-bp/SEP_TRANSPORT_BILL/main/SEP_trans_bill.xlsx';
                 
-                // Fetch the Excel file
                 const response = await fetch(githubUrl);
-                if (!response.ok) {
-                    throw new Error(`Failed to fetch data: ${response.status}`);
-                }
+                if (!response.ok) throw new Error(`Failed to fetch data: ${response.status}`);
                 
-                // Convert to blob
                 const blob = await response.blob();
-                
-                // Read the Excel file
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     try {
-                        // Parse the Excel file
                         const data = new Uint8Array(e.target.result);
                         const workbook = XLSX.read(data, {type: 'array'});
-                        
-                        // Get the first sheet
                         const sheetName = workbook.SheetNames[0];
                         const worksheet = workbook.Sheets[sheetName];
-                        
-                        // Convert to JSON with date handling
                         const jsonData = XLSX.utils.sheet_to_json(worksheet, {
                             header: 1,
                             raw: false,
-                            dateNF: 'yyyy-mm-dd' // Specify date format
+                            dateNF: 'yyyy-mm-dd'
                         });
-                        
-                        // Process the data
                         processTransportData(jsonData, worksheet);
-                        
-                        // Clear loading message
                         resultsContent.innerHTML = '';
-                        
-                        // Update dashboard
                         updateDashboard();
                     } catch (error) {
                         console.error('Error processing Excel data:', error);
-                        resultsContent.innerHTML = '<div class="no-results">Error loading transport data. Please try again later.</div>';
+                        resultsContent.innerHTML = '<div class="no-results">Error loading transport data.</div>';
                     }
                 };
-                
                 reader.readAsArrayBuffer(blob);
             } catch (error) {
                 console.error('Error fetching transport data:', error);
-                const resultsContent = document.getElementById('resultsContent');
-                resultsContent.innerHTML = '<div class="no-results">Error loading transport data. Please try again later.</div>';
+                document.getElementById('resultsContent').innerHTML = '<div class="no-results">Error loading data.</div>';
             }
         }
 
-        // Process transport data
         function processTransportData(jsonData, worksheet) {
-            if (!jsonData || jsonData.length < 2) {
-                console.error('Invalid data format');
-                return;
-            }
-            
-            // Extract headers (first row)
-            const headers = jsonData[0].map(header => header ? header.toString().trim() : '');
-            
-            // Process data rows
+            if (!jsonData || jsonData.length < 2) return;
+            const headers = jsonData[0].map(h => h ? h.toString().trim() : '');
             transportData = [];
             for (let i = 1; i < jsonData.length; i++) {
                 const row = jsonData[i];
@@ -1255,22 +1226,16 @@
                     const rowData = {};
                     headers.forEach((header, index) => {
                         if (header && row[index] !== undefined) {
-                            // Handle date conversion for Accounting Date column
-                            if (header === 'Accounting Date' && row[index]) {
-                                rowData[header] = convertExcelDate(row[index]);
-                            } else {
-                                rowData[header] = row[index];
-                            }
+                            rowData[header] = header === 'Accounting Date' && row[index] 
+                                ? convertExcelDate(row[index]) 
+                                : row[index];
                         }
                     });
                     transportData.push(rowData);
                 }
             }
-            
-            console.log('Transport data loaded:', transportData.length, 'records');
         }
 
-        // NEW: Update dashboard with summary data - FIXED VERSION
         function updateDashboard() {
             if (transportData.length === 0) {
                 document.getElementById('totalVehicles').textContent = '0';
@@ -1279,191 +1244,109 @@
                 return;
             }
             
-            // Calculate overall totals
             let totalVehicles = new Set();
             let totalQuantity = 0;
             let totalAmount = 0;
-            
-            // For breakdowns
             let productBreakdown = {};
             let vehicleBreakdown = {};
             
             transportData.forEach(record => {
-                // Add vehicle to set
                 const vehicleNo = record['VEHICLE NO'] ? record['VEHICLE NO'].toString().trim().toUpperCase() : '';
                 if (vehicleNo) {
                     totalVehicles.add(vehicleNo);
-                    
-                    // Update vehicle breakdown
-                    if (!vehicleBreakdown[vehicleNo]) {
-                        vehicleBreakdown[vehicleNo] = { quantity: 0, amount: 0 };
-                    }
+                    if (!vehicleBreakdown[vehicleNo]) vehicleBreakdown[vehicleNo] = { quantity: 0, amount: 0 };
                 }
                 
-                // Calculate quantity - FIXED: Properly parse NET WT values
                 let quantity = 0;
                 const netWt = record['NET WT'];
                 if (netWt !== undefined && netWt !== null && netWt !== '') {
-                    // Convert to string and remove any non-numeric characters except decimal point
-                    const netWtStr = netWt.toString().trim();
-                    // Parse the numeric value
-                    quantity = parseFloat(netWtStr) || 0;
+                    quantity = parseFloat(netWt.toString().trim()) || 0;
                 }
                 totalQuantity += quantity;
                 
-                // Calculate amount - FIXED: Properly parse Transport Amount values
                 let amount = 0;
                 const transportAmount = record['Transport Amount'];
                 if (transportAmount !== undefined && transportAmount !== null && transportAmount !== '') {
-                    // Convert to string and remove any non-numeric characters except decimal point
-                    const amountStr = transportAmount.toString().trim();
-                    // Parse the numeric value
-                    amount = parseFloat(amountStr) || 0;
+                    amount = parseFloat(transportAmount.toString().trim()) || 0;
                 }
                 totalAmount += amount;
                 
-                // Update product breakdown
                 const product = record['Material'] || 'Unknown';
-                if (!productBreakdown[product]) {
-                    productBreakdown[product] = { quantity: 0, amount: 0 };
-                }
+                if (!productBreakdown[product]) productBreakdown[product] = { quantity: 0, amount: 0 };
                 productBreakdown[product].quantity += quantity;
                 productBreakdown[product].amount += amount;
                 
-                // Update vehicle breakdown
                 if (vehicleNo && vehicleBreakdown[vehicleNo]) {
                     vehicleBreakdown[vehicleNo].quantity += quantity;
                     vehicleBreakdown[vehicleNo].amount += amount;
                 }
             });
             
-            // Update overall summary
             document.getElementById('totalVehicles').textContent = totalVehicles.size;
             document.getElementById('totalQuantity').textContent = totalQuantity.toFixed(2);
             document.getElementById('totalAmount').textContent = `₹${totalAmount.toFixed(2)}`;
             
-            // Update product breakdown
             const productBreakdownElement = document.getElementById('productBreakdown');
             productBreakdownElement.innerHTML = '';
-            
-            // Sort products by quantity (descending)
             const sortedProducts = Object.entries(productBreakdown).sort((a, b) => b[1].quantity - a[1].quantity);
-            
             sortedProducts.forEach(([product, data]) => {
-                const productItem = document.createElement('div');
-                productItem.className = 'product-item';
-                productItem.innerHTML = `
-                    <div class="product-name">${product}</div>
-                    <div class="product-qty">${data.quantity.toFixed(2)}</div>
-                    <div class="product-amount">₹${data.amount.toFixed(2)}</div>
-                `;
-                productBreakdownElement.appendChild(productItem);
+                const item = document.createElement('div');
+                item.className = 'product-item';
+                item.innerHTML = `<div class="product-name">${product}</div><div class="product-qty">${data.quantity.toFixed(2)}</div><div class="product-amount">₹${data.amount.toFixed(2)}</div>`;
+                productBreakdownElement.appendChild(item);
             });
             
-            // Update top vehicles
             const topVehiclesElement = document.getElementById('topVehicles');
             topVehiclesElement.innerHTML = '';
-            
-            // Sort vehicles by amount (descending) and take top 5
             const sortedVehicles = Object.entries(vehicleBreakdown).sort((a, b) => b[1].amount - a[1].amount).slice(0, 5);
-            
             sortedVehicles.forEach(([vehicle, data]) => {
-                const vehicleItem = document.createElement('div');
-                vehicleItem.className = 'product-item';
-                vehicleItem.innerHTML = `
-                    <div class="product-name">${vehicle}</div>
-                    <div class="product-qty">${data.quantity.toFixed(2)}</div>
-                    <div class="product-amount">₹${data.amount.toFixed(2)}</div>
-                `;
-                topVehiclesElement.appendChild(vehicleItem);
-            });
-            
-            console.log('Dashboard updated:', {
-                totalVehicles: totalVehicles.size,
-                totalQuantity: totalQuantity,
-                totalAmount: totalAmount,
-                products: Object.keys(productBreakdown).length,
-                vehicles: Object.keys(vehicleBreakdown).length
+                const item = document.createElement('div');
+                item.className = 'product-item';
+                item.innerHTML = `<div class="product-name">${vehicle}</div><div class="product-qty">${data.quantity.toFixed(2)}</div><div class="product-amount">₹${data.amount.toFixed(2)}</div>`;
+                topVehiclesElement.appendChild(item);
             });
         }
 
-        // Convert Excel serial date to JavaScript Date object
         function convertExcelDate(excelDate) {
-            // If it's already a proper date string, return it
-            if (typeof excelDate === 'string' && excelDate.includes('-')) {
-                return excelDate;
-            }
-            
-            // If it's a number (Excel serial date), convert it
+            if (typeof excelDate === 'string' && excelDate.includes('-')) return excelDate;
             if (typeof excelDate === 'number') {
-                // Excel date serial numbers start from January 1, 1900
-                const excelEpoch = new Date(1900, 0, 1);
-                // Subtract 2 days because Excel incorrectly considers 1900 as a leap year
-                const jsDate = new Date(excelEpoch.getTime() + (excelDate - 2) * 24 * 60 * 60 * 1000);
-                return jsDate.toISOString().split('T')[0]; // Return as YYYY-MM-DD
+                const jsDate = new Date(new Date(1900, 0, 1).getTime() + (excelDate - 2) * 86400000);
+                return jsDate.toISOString().split('T')[0];
             }
-            
-            // If it's already a Date object, format it
-            if (excelDate instanceof Date) {
-                return excelDate.toISOString().split('T')[0];
-            }
-            
-            // Return as is if we can't convert it
+            if (excelDate instanceof Date) return excelDate.toISOString().split('T')[0];
             return excelDate;
         }
 
-        // Format date for display
         function formatDateForDisplay(dateValue) {
             if (!dateValue) return '';
-            
-            // If it's already a formatted date string, return it
             if (typeof dateValue === 'string' && dateValue.includes('-')) {
                 const date = new Date(dateValue);
-                if (!isNaN(date.getTime())) {
-                    return date.toLocaleDateString('en-IN'); // Indian date format
-                }
-                return dateValue;
+                return !isNaN(date.getTime()) ? date.toLocaleDateString('en-IN') : dateValue;
             }
-            
-            // If it's a Date object
-            if (dateValue instanceof Date) {
-                return dateValue.toLocaleDateString('en-IN');
-            }
-            
-            // Return as is if we can't format it
+            if (dateValue instanceof Date) return dateValue.toLocaleDateString('en-IN');
             return dateValue;
         }
 
-        // Set up search functionality
         function setupSearchFunctionality() {
             const searchInput = document.getElementById('vehicleSearch');
             const suggestionsContainer = document.getElementById('suggestionsContainer');
             
-            // Event listener for input changes
             searchInput.addEventListener('input', function() {
                 const searchTerm = this.value.trim().toUpperCase();
-                
-                // Clear suggestions if search term is empty
                 if (searchTerm.length === 0) {
                     suggestionsContainer.style.display = 'none';
                     return;
                 }
-                
-                // Get matching vehicle numbers from both vehicleData and transportData
                 const matches = getMatchingVehicles(searchTerm);
-                
-                // Display suggestions
                 displaySuggestions(matches, searchTerm);
             });
             
-            // Event listener for clicks outside the search area
             document.addEventListener('click', function(e) {
                 if (!searchInput.contains(e.target) && !suggestionsContainer.contains(e.target)) {
                     suggestionsContainer.style.display = 'none';
                 }
             });
             
-            // Event listener for keyboard navigation
             searchInput.addEventListener('keydown', function(e) {
                 const suggestions = suggestionsContainer.querySelectorAll('.suggestion-item');
                 const activeSuggestion = suggestionsContainer.querySelector('.suggestion-item.active');
@@ -1501,11 +1384,8 @@
             });
         }
 
-        // Get matching vehicles based on search term
         function getMatchingVehicles(searchTerm) {
             const matches = [];
-            
-            // Get matches from vehicleData
             vehicleData.forEach(vehicle => {
                 vehicle.vehicleNumbers.forEach(number => {
                     if (number && number.includes(searchTerm) && !matches.includes(number)) {
@@ -1513,8 +1393,6 @@
                     }
                 });
             });
-            
-            // Get matches from transportData (vehicles that have transactions but no vendor details)
             if (transportData.length > 0) {
                 transportData.forEach(record => {
                     const vehicleNo = record['VEHICLE NO'] ? record['VEHICLE NO'].toString().trim().toUpperCase() : '';
@@ -1523,494 +1401,288 @@
                     }
                 });
             }
-            
-            // Sort matches by relevance (closer matches first)
-            matches.sort((a, b) => {
-                const aIndex = a.indexOf(searchTerm);
-                const bIndex = b.indexOf(searchTerm);
-                return aIndex - bIndex;
-            });
-            
+            matches.sort((a, b) => a.indexOf(searchTerm) - b.indexOf(searchTerm));
             return matches;
         }
 
-        // Display suggestions in the dropdown
         function displaySuggestions(matches, searchTerm) {
             const suggestionsContainer = document.getElementById('suggestionsContainer');
-            
-            // Clear previous suggestions
             suggestionsContainer.innerHTML = '';
-            
             if (matches.length === 0) {
                 suggestionsContainer.style.display = 'none';
                 return;
             }
-            
-            // Create suggestion items
             matches.forEach(match => {
-                const suggestionItem = document.createElement('div');
-                suggestionItem.className = 'suggestion-item';
-                suggestionItem.textContent = match;
-                
-                // Highlight the matching part
-                const regex = new RegExp(searchTerm, 'gi');
-                suggestionItem.innerHTML = match.replace(regex, '<span class="highlight">$&</span>');
-                
-                // Add click event
-                suggestionItem.addEventListener('click', function() {
+                const item = document.createElement('div');
+                item.className = 'suggestion-item';
+                item.innerHTML = match.replace(new RegExp(searchTerm, 'gi'), '<span class="highlight">$&</span>');
+                item.addEventListener('click', () => {
                     document.getElementById('vehicleSearch').value = match;
                     suggestionsContainer.style.display = 'none';
                     searchVehicle();
                 });
-                
-                // Add hover effect
-                suggestionItem.addEventListener('mouseover', function() {
-                    // Remove active class from all suggestions
-                    suggestionsContainer.querySelectorAll('.suggestion-item').forEach(item => {
-                        item.classList.remove('active');
-                    });
-                    // Add active class to current suggestion
-                    this.classList.add('active');
+                item.addEventListener('mouseover', () => {
+                    suggestionsContainer.querySelectorAll('.suggestion-item').forEach(i => i.classList.remove('active'));
+                    item.classList.add('active');
                 });
-                
-                suggestionsContainer.appendChild(suggestionItem);
+                suggestionsContainer.appendChild(item);
             });
-            
             suggestionsContainer.style.display = 'block';
         }
 
-        // Search function
         function searchVehicle() {
             const searchValue = document.getElementById('vehicleSearch').value.trim().toUpperCase();
-            
             if (!searchValue) {
                 alert('Please enter a vehicle number');
                 return;
             }
-            
-            const results = vehicleData.filter(vehicle => 
-                vehicle.vehicleNumbers.includes(searchValue)
-            );
-            
+            const results = vehicleData.filter(vehicle => vehicle.vehicleNumbers.includes(searchValue));
             displayResults(results, searchValue);
         }
 
-        // Display results - FIXED: Now shows all vehicles for a vendor
         function displayResults(results, searchValue) {
             const resultsSection = document.getElementById('resultsSection');
             const resultsContent = document.getElementById('resultsContent');
-            
             resultsContent.innerHTML = '';
             
-            // Store current search details for saving
             window.currentSearch = {
                 vehicleNumber: searchValue,
                 vendorDetails: results,
                 transportRecords: [],
                 allVendorVehicles: [],
-                vendorTotals: {
-                    totalVehicles: 0,
-                    totalRecords: 0,
-                    totalQuantity: 0,
-                    totalAmount: 0
-                }
+                vendorTotals: { totalVehicles: 0, totalRecords: 0, totalQuantity: 0, totalAmount: 0 },
+                manualAmount: null
             };
             
-            // Check if vehicle has transport records
             const transportRecords = transportData.filter(record => {
-                const recordVehicleNo = record['VEHICLE NO'] ? record['VEHICLE NO'].toString().trim().toUpperCase() : '';
-                return recordVehicleNo === searchValue;
+                const v = record['VEHICLE NO'] ? record['VEHICLE NO'].toString().trim().toUpperCase() : '';
+                return v === searchValue;
             });
-            
             window.currentSearch.transportRecords = transportRecords;
             
             if (results.length === 0) {
                 if (transportRecords.length > 0) {
-                    // Vehicle has transport records but no vendor details
-                    const warningDiv = document.createElement('div');
-                    warningDiv.className = 'warning';
-                    warningDiv.innerHTML = `
-                        <strong>Note:</strong> Vendor details not found for vehicle number: ${searchValue}. 
-                        However, transport records are available below.
-                    `;
-                    resultsContent.appendChild(warningDiv);
-                    
-                    // Display transport details
+                    resultsContent.innerHTML += '<div class="warning"><strong>Note:</strong> Vendor details not found, but transport records exist.</div>';
                     displayTransportDetails(searchValue, transportRecords);
                 } else {
-                    // No vendor details and no transport records
-                    resultsContent.innerHTML = '<div class="no-results">No vendor details found for vehicle number: ' + searchValue + '</div>';
+                    resultsContent.innerHTML = '<div class="no-results">No data found.</div>';
                 }
             } else {
-                // Group results by vendor
                 const vendorGroups = {};
-                
                 results.forEach(vehicle => {
-                    const vendorKey = vehicle.partyName + '|' + vehicle.pan;
-                    if (!vendorGroups[vendorKey]) {
-                        vendorGroups[vendorKey] = {
-                            vendor: vehicle,
-                            vehicles: []
-                        };
-                    }
-                    
-                    // Add all vehicles for this vendor
-                    vehicle.vehicleNumbers.forEach(vehicleNumber => {
-                        if (!vendorGroups[vendorKey].vehicles.includes(vehicleNumber)) {
-                            vendorGroups[vendorKey].vehicles.push(vehicleNumber);
-                        }
+                    const key = vehicle.partyName + '|' + vehicle.pan;
+                    if (!vendorGroups[key]) vendorGroups[key] = { vendor: vehicle, vehicles: [] };
+                    vehicle.vehicleNumbers.forEach(v => {
+                        if (!vendorGroups[key].vehicles.includes(v)) vendorGroups[key].vehicles.push(v);
                     });
                 });
                 
-                // Store all vendor vehicles for current search
-                Object.values(vendorGroups).forEach(group => {
-                    window.currentSearch.allVendorVehicles = window.currentSearch.allVendorVehicles.concat(group.vehicles);
-                });
+                window.currentSearch.allVendorVehicles = Object.values(vendorGroups).flatMap(g => g.vehicles);
                 
-                // Remove duplicates
-                window.currentSearch.allVendorVehicles = [...new Set(window.currentSearch.allVendorVehicles)];
-                
-                // Display vendor groups
                 Object.values(vendorGroups).forEach((group, index) => {
                     const vendorGroupDiv = document.createElement('div');
                     vendorGroupDiv.className = 'vendor-group';
                     
-                    const vendorHeader = document.createElement('div');
-                    vendorHeader.className = 'vendor-header';
-                    vendorHeader.innerHTML = `
-                        <div>
-                            <div class="result-title">${group.vendor.partyName}</div>
-                            <div><strong>PAN:</strong> ${group.vendor.pan}</div>
-                        </div>
-                        <div>${group.vehicles.length} Vehicles</div>
-                    `;
+                    const header = document.createElement('div');
+                    header.className = 'vendor-header';
+                    header.innerHTML = `<div><div class="result-title">${group.vendor.partyName}</div><div><strong>PAN:</strong> ${group.vendor.pan}</div></div><div>${group.vehicles.length} Vehicles</div>`;
+                    header.addEventListener('click', () => {
+                        document.getElementById(`vendorVehicles${index}`).classList.toggle('expanded');
+                    });
+                    vendorGroupDiv.appendChild(header);
                     
-                    const vendorVehicles = document.createElement('div');
-                    vendorVehicles.className = 'vendor-vehicles';
-                    vendorVehicles.id = `vendorVehicles${index}`;
-                    
-                    // Add vehicle options
-                    group.vehicles.forEach(vehicleNumber => {
-                        const vehicleOption = document.createElement('div');
-                        vehicleOption.className = 'vehicle-option';
-                        if (vehicleNumber === searchValue) {
-                            vehicleOption.classList.add('selected');
-                        }
-                        vehicleOption.textContent = vehicleNumber;
-                        vehicleOption.addEventListener('click', function() {
-                            // Remove selected class from all options
-                            vendorVehicles.querySelectorAll('.vehicle-option').forEach(option => {
-                                option.classList.remove('selected');
-                            });
-                            // Add selected class to clicked option
-                            this.classList.add('selected');
-                            // Search for this vehicle
-                            document.getElementById('vehicleSearch').value = vehicleNumber;
+                    const vehiclesDiv = document.createElement('div');
+                    vehiclesDiv.className = 'vendor-vehicles';
+                    vehiclesDiv.id = `vendorVehicles${index}`;
+                    group.vehicles.forEach(v => {
+                        const opt = document.createElement('div');
+                        opt.className = 'vehicle-option';
+                        if (v === searchValue) opt.classList.add('selected');
+                        opt.textContent = v;
+                        opt.addEventListener('click', () => {
+                            document.querySelectorAll(`#vendorVehicles${index} .vehicle-option`).forEach(o => o.classList.remove('selected'));
+                            opt.classList.add('selected');
+                            document.getElementById('vehicleSearch').value = v;
                             searchVehicle();
                         });
-                        vendorVehicles.appendChild(vehicleOption);
+                        vehiclesDiv.appendChild(opt);
                     });
-                    
-                    // Toggle vendor vehicles on header click
-                    vendorHeader.addEventListener('click', function() {
-                        vendorVehicles.classList.toggle('expanded');
-                    });
-                    
-                    vendorGroupDiv.appendChild(vendorHeader);
-                    vendorGroupDiv.appendChild(vendorVehicles);
+                    vendorGroupDiv.appendChild(vehiclesDiv);
                     resultsContent.appendChild(vendorGroupDiv);
                     
-                    // Display vendor details
-                    const vendorDetailsDiv = document.createElement('div');
-                    vendorDetailsDiv.className = 'result-item';
-                    vendorDetailsDiv.innerHTML = `
-                        <div><strong>Bank Account No.:</strong> ${group.vendor.accountNo}</div>
-                        <div><strong>Bank Name & Branch:</strong> ${group.vendor.bankName}</div>
-                        <div><strong>Beneficiary:</strong> ${group.vendor.beneficiary}</div>
-                    `;
-                    resultsContent.appendChild(vendorDetailsDiv);
+                    const details = document.createElement('div');
+                    details.className = 'result-item';
+                    details.innerHTML = `<div><strong>Bank A/c:</strong> ${group.vendor.accountNo}</div><div><strong>Bank:</strong> ${group.vendor.bankName}</div><div><strong>Beneficiary:</strong> ${group.vendor.beneficiary}</div>`;
+                    resultsContent.appendChild(details);
                     
-                    // NEW: Display transport details for ALL vehicles of this vendor
                     displayVendorTransportDetails(group.vendor, group.vehicles);
                 });
             }
-            
             resultsSection.style.display = 'block';
-            
-            // Scroll to results
             resultsSection.scrollIntoView({ behavior: 'smooth' });
         }
 
-        // NEW: Display transport details for all vehicles of a vendor
         function displayVendorTransportDetails(vendor, vehicleNumbers) {
-            // Get transport records for all vehicles of this vendor
-            const vendorTransportRecords = [];
-            let vendorTotalRecords = 0;
-            let vendorTotalQuantity = 0;
-            let vendorTotalAmount = 0;
+            const allRecords = [];
+            let totalQty = 0, totalAmt = 0, totalRecs = 0;
             
-            vehicleNumbers.forEach(vehicleNumber => {
-                const vehicleRecords = transportData.filter(record => {
-                    const recordVehicleNo = record['VEHICLE NO'] ? record['VEHICLE NO'].toString().trim().toUpperCase() : '';
-                    return recordVehicleNo === vehicleNumber;
-                });
-                
-                vendorTransportRecords.push({
-                    vehicleNumber: vehicleNumber,
-                    records: vehicleRecords
-                });
-                
-                // Calculate totals for this vehicle
-                vehicleRecords.forEach(record => {
-                    vendorTotalRecords++;
-                    
-                    // Calculate quantity
-                    const quantity = parseFloat(record['NET WT']) || 0;
-                    vendorTotalQuantity += quantity;
-                    
-                    // Calculate amount
-                    const amount = parseFloat(record['Transport Amount']) || 0;
-                    vendorTotalAmount += amount;
+            vehicleNumbers.forEach(vNo => {
+                const recs = transportData.filter(r => (r['VEHICLE NO'] || '').toString().trim().toUpperCase() === vNo);
+                allRecords.push(...recs);
+                recs.forEach(r => {
+                    totalQty += parseFloat(r['NET WT']) || 0;
+                    totalAmt += parseFloat(r['Transport Amount']) || 0;
+                    totalRecs++;
                 });
             });
             
-            // Update current search vendor totals
-            window.currentSearch.vendorTotals.totalVehicles = vehicleNumbers.length;
-            window.currentSearch.vendorTotals.totalRecords = vendorTotalRecords;
-            window.currentSearch.vendorTotals.totalQuantity = vendorTotalQuantity;
-            window.currentSearch.vendorTotals.totalAmount = vendorTotalAmount;
+            window.currentSearch.vendorTotals = {
+                totalVehicles: vehicleNumbers.length,
+                totalRecords: totalRecs,
+                totalQuantity: totalQty,
+                totalAmount: totalAmt
+            };
             
-            // Create vendor total summary
-            const vendorSummaryDiv = document.createElement('div');
-            vendorSummaryDiv.className = 'vendor-total-summary';
-            vendorSummaryDiv.innerHTML = `
+            const summary = document.createElement('div');
+            summary.className = 'vendor-total-summary';
+            summary.innerHTML = `
                 <div class="vendor-total-title">Vendor Total Summary</div>
                 <div class="vendor-total-details">
-                    <div class="vendor-total-item">
-                        <div class="vendor-total-label">Total Vehicles</div>
-                        <div class="vendor-total-value">${vehicleNumbers.length}</div>
-                    </div>
-                    <div class="vendor-total-item">
-                        <div class="vendor-total-label">Total Records</div>
-                        <div class="vendor-total-value">${vendorTotalRecords}</div>
-                    </div>
-                    <div class="vendor-total-item">
-                        <div class="vendor-total-label">Total Quantity</div>
-                        <div class="vendor-total-value">${vendorTotalQuantity.toFixed(2)}</div>
-                    </div>
-                    <div class="vendor-total-item">
-                        <div class="vendor-total-label">Total Amount</div>
-                        <div class="vendor-total-value">₹${vendorTotalAmount.toFixed(2)}</div>
-                    </div>
+                    <div class="vendor-total-item"><div class="vendor-total-label">Vehicles</div><div class="vendor-total-value">${vehicleNumbers.length}</div></div>
+                    <div class="vendor-total-item"><div class="vendor-total-label">Records</div><div class="vendor-total-value">${totalRecs}</div></div>
+                    <div class="vendor-total-item"><div class="vendor-total-label">Quantity</div><div class="vendor-total-value">${totalQty.toFixed(2)}</div></div>
+                    <div class="vendor-total-item"><div class="vendor-total-label">Amount</div><div class="vendor-total-value">₹${totalAmt.toFixed(2)}</div></div>
                 </div>
             `;
+            document.getElementById('resultsContent').appendChild(summary);
             
-            document.getElementById('resultsContent').appendChild(vendorSummaryDiv);
-            
-            // Display transport details for each vehicle
-            vendorTransportRecords.forEach(vehicleData => {
-                if (vehicleData.records.length > 0) {
-                    displayTransportDetails(vehicleData.vehicleNumber, vehicleData.records);
-                }
+            vehicleNumbers.forEach(vNo => {
+                const recs = allRecords.filter(r => (r['VEHICLE NO'] || '').toString().trim().toUpperCase() === vNo);
+                if (recs.length > 0) displayTransportDetails(vNo, recs);
             });
         }
 
-        // Display transport details
         function displayTransportDetails(vehicleNumber, transportRecords) {
-            if (transportRecords.length === 0) {
-                return; // No transport records to display
-            }
+            if (transportRecords.length === 0) return;
             
-            // Create transport details section
-            const transportDiv = document.createElement('div');
-            transportDiv.className = 'transport-details';
-            
-            transportDiv.innerHTML = `
+            const div = document.createElement('div');
+            div.className = 'transport-details';
+            div.innerHTML = `
                 <div class="result-title">Transport Details for Vehicle: ${vehicleNumber}</div>
                 <table class="transport-table">
-                    <thead>
-                        <tr>
-                            <th>Accounting Date</th>
-                            <th>Customer Name</th>
-                            <th>Vehicle No</th>
-                            <th>Material</th>
-                            <th>Net Weight</th>
-                            <th>Transport Rate</th>
-                            <th>Transport Amount</th>
-                        </tr>
-                    </thead>
-                    <tbody id="transportTableBody_${vehicleNumber.replace(/\s+/g, '_')}">
-                    </tbody>
+                    <thead><tr><th>Date</th><th>Customer</th><th>Vehicle</th><th>Material</th><th>Net Wt</th><th>Rate</th><th>Amount</th></tr></thead>
+                    <tbody id="tbody_${vehicleNumber.replace(/\s+/g, '_')}"></tbody>
                 </table>
-                <div class="summary-box" id="summaryBox_${vehicleNumber.replace(/\s+/g, '_')}">
-                    <div class="summary-item">
-                        <div class="summary-label">Total Records</div>
-                        <div class="summary-value" id="totalRecords_${vehicleNumber.replace(/\s+/g, '_')}">0</div>
-                    </div>
+                <div class="summary-box" id="summary_${vehicleNumber.replace(/\s+/g, '_')}">
+                    <div class="summary-item"><div class="summary-label">Records</div><div class="summary-value" id="recs_${vehicleNumber.replace(/\s+/g, '_')}">0</div></div>
                     <div class="summary-divider"></div>
-                    <div class="summary-item">
-                        <div class="summary-label">Total Quantity</div>
-                        <div class="summary-value" id="totalQuantity_${vehicleNumber.replace(/\s+/g, '_')}">0</div>
-                    </div>
+                    <div class="summary-item"><div class="summary-label">Quantity</div><div class="summary-value" id="qty_${vehicleNumber.replace(/\s+/g, '_')}">0</div></div>
                     <div class="summary-divider"></div>
-                    <div class="summary-item">
-                        <div class="summary-label">Total Amount</div>
-                        <div class="summary-value" id="totalAmount_${vehicleNumber.replace(/\s+/g, '_')}">0.00</div>
-                    </div>
+                    <div class="summary-item"><div class="summary-label">Amount</div><div class="summary-value" id="amt_${vehicleNumber.replace(/\s+/g, '_')}">0.00</div></div>
                 </div>
                 <div class="amount-edit">
-                    <label for="manualAmount_${vehicleNumber.replace(/\s+/g, '_')}">Manual Total Amount:</label>
-                    <input type="number" id="manualAmount_${vehicleNumber.replace(/\s+/g, '_')}" class="amount-input" placeholder="Enter amount">
-                    <button type="button" class="btn-update" onclick="updateTotalAmount('${vehicleNumber}')">Update Total</button>
+                    <label for="manual_${vehicleNumber.replace(/\s+/g, '_')}">Manual Amount:</label>
+                    <input type="number" id="manual_${vehicleNumber.replace(/\s+/g, '_')}" class="amount-input" placeholder="Enter amount">
+                    <button type="button" class="btn-update" onclick="updateTotalAmount('${vehicleNumber}')">Update</button>
                 </div>
             `;
+            document.getElementById('resultsContent').appendChild(div);
             
-            document.getElementById('resultsContent').appendChild(transportDiv);
-            
-            // Populate table rows
-            const tableBody = document.getElementById(`transportTableBody_${vehicleNumber.replace(/\s+/g, '_')}`);
-            let totalAmount = 0;
-            let totalQuantity = 0;
-            
-            transportRecords.forEach(record => {
+            const tbody = document.getElementById(`tbody_${vehicleNumber.replace(/\s+/g, '_')}`);
+            let totalQty = 0, totalAmt = 0;
+            transportRecords.forEach(r => {
                 const row = document.createElement('tr');
-                
-                // Format date properly
-                const accountingDate = formatDateForDisplay(record['Accounting Date']);
-                
                 row.innerHTML = `
-                    <td>${accountingDate}</td>
-                    <td>${record['NAME OF THE CUSTOMER'] || ''}</td>
-                    <td>${record['VEHICLE NO'] || ''}</td>
-                    <td>${record['Material'] || ''}</td>
-                    <td>${record['NET WT'] || ''}</td>
-                    <td>${record['Transport Rate'] || ''}</td>
-                    <td>${record['Transport Amount'] || ''}</td>
+                    <td>${formatDateForDisplay(r['Accounting Date'])}</td>
+                    <td>${r['NAME OF THE CUSTOMER'] || ''}</td>
+                    <td>${r['VEHICLE NO'] || ''}</td>
+                    <td>${r['Material'] || ''}</td>
+                    <td>${r['NET WT'] || ''}</td>
+                    <td>${r['Transport Rate'] || ''}</td>
+                    <td>${r['Transport Amount'] || ''}</td>
                 `;
-                
-                tableBody.appendChild(row);
-                
-                // Calculate total amount
-                const amount = parseFloat(record['Transport Amount']) || 0;
-                totalAmount += amount;
-                
-                // Calculate total quantity
-                const quantity = parseFloat(record['NET WT']) || 0;
-                totalQuantity += quantity;
+                tbody.appendChild(row);
+                totalQty += parseFloat(r['NET WT']) || 0;
+                totalAmt += parseFloat(r['Transport Amount']) || 0;
             });
             
-            // Update summary box
-            document.getElementById(`totalRecords_${vehicleNumber.replace(/\s+/g, '_')}`).textContent = transportRecords.length;
-            document.getElementById(`totalQuantity_${vehicleNumber.replace(/\s+/g, '_')}`).textContent = totalQuantity.toFixed(2);
-            document.getElementById(`totalAmount_${vehicleNumber.replace(/\s+/g, '_')}`).textContent = totalAmount.toFixed(2);
-            
-            // Set manual amount input
-            document.getElementById(`manualAmount_${vehicleNumber.replace(/\s+/g, '_')}`).value = totalAmount.toFixed(2);
-            
-            // Update current search with totals
-            window.currentSearch.totalAmount = totalAmount;
-            window.currentSearch.totalQuantity = totalQuantity;
-            window.currentSearch.recordCount = transportRecords.length;
+            document.getElementById(`recs_${vehicleNumber.replace(/\s+/g, '_')}`).textContent = transportRecords.length;
+            document.getElementById(`qty_${vehicleNumber.replace(/\s+/g, '_')}`).textContent = totalQty.toFixed(2);
+            document.getElementById(`amt_${vehicleNumber.replace(/\s+/g, '_')}`).textContent = totalAmt.toFixed(2);
+            document.getElementById(`manual_${vehicleNumber.replace(/\s+/g, '_')}`).value = totalAmt.toFixed(2);
         }
 
-        // Update total amount manually
         function updateTotalAmount(vehicleNumber) {
-            const manualAmount = parseFloat(document.getElementById(`manualAmount_${vehicleNumber.replace(/\s+/g, '_')}`).value);
-            
-            if (isNaN(manualAmount)) {
-                alert('Please enter a valid amount');
+            const inputId = `manual_${vehicleNumber.replace(/\s+/g, '_')}`;
+            const manual = parseFloat(document.getElementById(inputId).value);
+            if (isNaN(manual)) {
+                alert('Enter valid amount');
                 return;
             }
-            
-            // Update summary box
-            document.getElementById(`totalAmount_${vehicleNumber.replace(/\s+/g, '_')}`).textContent = manualAmount.toFixed(2);
-            
-            // Update current search
-            window.currentSearch.totalAmount = manualAmount;
-            
-            alert('Total amount updated successfully!');
+            document.getElementById(`amt_${vehicleNumber.replace(/\s+/g, '_')}`).textContent = manual.toFixed(2);
+            if (window.currentSearch) window.currentSearch.manualAmount = manual;
+            alert('Amount updated!');
         }
 
-        // Save current result to the saved results list - FIXED: Now saves all vendor vehicles data
+        // FIXED: Save to List – now saves all vendor data + manual amount
         function saveCurrentResult() {
             if (!window.currentSearch) {
                 alert('No search results to save');
                 return;
             }
-            
-            const searchValue = window.currentSearch.vehicleNumber;
-            
-            // Get transport records for ALL vehicles of the vendor, not just the searched one
-            let allVendorTransportRecords = [];
-            let vendorTotalRecords = 0;
-            let vendorTotalQuantity = 0;
-            let vendorTotalAmount = 0;
-            
-            if (window.currentSearch.allVendorVehicles && window.currentSearch.allVendorVehicles.length > 0) {
-                window.currentSearch.allVendorVehicles.forEach(vehicleNumber => {
-                    const vehicleRecords = transportData.filter(record => {
-                        const recordVehicleNo = record['VEHICLE NO'] ? record['VEHICLE NO'].toString().trim().toUpperCase() : '';
-                        return recordVehicleNo === vehicleNumber;
-                    });
-                    
-                    // Add to all records
-                    allVendorTransportRecords = allVendorTransportRecords.concat(vehicleRecords);
-                    
-                    // Calculate totals for this vehicle
-                    vehicleRecords.forEach(record => {
-                        vendorTotalRecords++;
-                        
-                        // Calculate quantity
-                        const quantity = parseFloat(record['NET WT']) || 0;
-                        vendorTotalQuantity += quantity;
-                        
-                        // Calculate amount
-                        const amount = parseFloat(record['Transport Amount']) || 0;
-                        vendorTotalAmount += amount;
-                    });
+
+            const vendor = window.currentSearch.vendorDetails.length > 0 ? window.currentSearch.vendorDetails[0] : null;
+            const allVehicles = window.currentSearch.allVendorVehicles || [];
+
+            const allRecords = [];
+            let totalQty = 0, totalAmt = 0, totalRecs = 0;
+
+            allVehicles.forEach(vNo => {
+                const recs = transportData.filter(r => (r['VEHICLE NO'] || '').toString().trim().toUpperCase() === vNo);
+                recs.forEach(r => {
+                    const qty = parseFloat(r['NET WT']) || 0;
+                    const amt = parseFloat(r['Transport Amount']) || 0;
+                    totalQty += qty;
+                    totalAmt += amt;
+                    totalRecs++;
                 });
-            }
-            
-            // Update current search with all vendor data
-            window.currentSearch.allVendorTransportRecords = allVendorTransportRecords;
-            window.currentSearch.vendorTotals.totalRecords = vendorTotalRecords;
-            window.currentSearch.vendorTotals.totalQuantity = vendorTotalQuantity;
-            window.currentSearch.vendorTotals.totalAmount = vendorTotalAmount;
-            
-            // Check if this vendor is already in saved results
-            const vendorKey = window.currentSearch.vendorDetails.length > 0 
-                ? window.currentSearch.vendorDetails[0].partyName + '|' + window.currentSearch.vendorDetails[0].pan
-                : searchValue;
-                
-            const existingIndex = savedResults.findIndex(result => {
-                if (result.vendorDetails.length > 0) {
-                    const resultVendorKey = result.vendorDetails[0].partyName + '|' + result.vendorDetails[0].pan;
-                    return resultVendorKey === vendorKey;
-                }
-                return result.vehicleNumber === searchValue;
+                allRecords.push(...recs);
             });
-            
-            if (existingIndex !== -1) {
-                // Update existing entry
-                savedResults[existingIndex] = {...window.currentSearch};
+
+            const manualAmt = window.currentSearch.manualAmount || 0;
+            const finalAmount = manualAmt > 0 ? manualAmt : totalAmt;
+
+            const saveObj = {
+                vehicleNumber: window.currentSearch.vehicleNumber,
+                vendorDetails: vendor ? [vendor] : [],
+                allVendorVehicles: allVehicles,
+                allVendorTransportRecords: allRecords,
+                vendorTotals: {
+                    totalVehicles: allVehicles.length,
+                    totalRecords: totalRecs,
+                    totalQuantity: totalQty,
+                    totalAmount: finalAmount
+                },
+                timestamp: new Date().toISOString()
+            };
+
+            const key = vendor ? `${vendor.partyName}|${vendor.pan}` : window.currentSearch.vehicleNumber;
+            const existingIdx = savedResults.findIndex(r => {
+                const rk = r.vendorDetails.length > 0 ? `${r.vendorDetails[0].partyName}|${r.vendorDetails[0].pan}` : r.vehicleNumber;
+                return rk === key;
+            });
+
+            if (existingIdx > -1) {
+                savedResults[existingIdx] = saveObj;
             } else {
-                // Add new entry with timestamp
-                savedResults.push({
-                    ...window.currentSearch,
-                    timestamp: new Date().toISOString()
-                });
+                savedResults.push(saveObj);
             }
-            
-            // Save to localStorage
+
             saveSavedResults();
-            
-            // Update the display
             displaySavedResults();
-            
             alert('Result saved successfully!');
         }
 
-        // Load saved results from localStorage
         function loadSavedResults() {
             const saved = localStorage.getItem('transportSavedResults');
             if (saved) {
@@ -2019,299 +1691,155 @@
             }
         }
 
-        // Save results to localStorage
         function saveSavedResults() {
             localStorage.setItem('transportSavedResults', JSON.stringify(savedResults));
         }
 
-        // Display saved results
         function displaySavedResults() {
-            const savedResultsList = document.getElementById('savedResultsList');
-            
+            const list = document.getElementById('savedResultsList');
             if (savedResults.length === 0) {
-                savedResultsList.innerHTML = '<div class="no-results">No saved results yet. Search for a vehicle and click "Save to List" to add it here.</div>';
+                list.innerHTML = '<div class="no-results">No saved results. Search and save.</div>';
                 return;
             }
-            
-            savedResultsList.innerHTML = '';
-            
-            savedResults.forEach((result, index) => {
-                const savedItem = document.createElement('div');
-                savedItem.className = 'saved-result-item';
-                
-                const vendorName = result.vendorDetails.length > 0 
-                    ? result.vendorDetails[0].partyName 
-                    : 'Vendor details not found';
-                
-                const panNumber = result.vendorDetails.length > 0 
-                    ? result.vendorDetails[0].pan 
-                    : 'N/A';
-                
-                // Use vendor totals if available
-                const totalVehicles = result.vendorTotals.totalVehicles || result.allVendorVehicles?.length || 1;
-                const totalRecords = result.vendorTotals.totalRecords || result.recordCount || 0;
-                const totalQuantity = result.vendorTotals.totalQuantity || result.totalQuantity || 0;
-                const totalAmount = result.vendorTotals.totalAmount || result.totalAmount || 0;
-                
-                savedItem.innerHTML = `
+            list.innerHTML = '';
+            savedResults.forEach((result, i) => {
+                const item = document.createElement('div');
+                item.className = 'saved-result-item';
+                const vendor = result.vendorDetails.length > 0 ? result.vendorDetails[0] : null;
+                const totals = result.vendorTotals;
+                item.innerHTML = `
                     <div class="saved-result-info">
-                        <div class="result-title">${vendorName}</div>
-                        <div><strong>PAN:</strong> ${panNumber}</div>
-                        <div><strong>Vehicles:</strong> ${totalVehicles}</div>
-                        <div><strong>Records:</strong> ${totalRecords} transactions</div>
-                        <div><strong>Total Quantity:</strong> ${totalQuantity.toFixed(2)}</div>
-                        <div><strong>Total Amount:</strong> ₹${totalAmount.toFixed(2)}</div>
+                        <div class="result-title">${vendor ? vendor.partyName : 'No Vendor'}</div>
+                        <div><strong>PAN:</strong> ${vendor ? vendor.pan : 'N/A'}</div>
+                        <div><strong>Vehicles:</strong> ${totals.totalVehicles}</div>
+                        <div><strong>Records:</strong> ${totals.totalRecords}</div>
+                        <div><strong>Qty:</strong> ${totals.totalQuantity.toFixed(2)}</div>
+                        <div><strong>Amount:</strong> ₹${totals.totalAmount.toFixed(2)}</div>
                     </div>
                     <div class="saved-result-actions">
-                        <button type="button" class="btn-view" onclick="viewSavedResult(${index})">View</button>
-                        <button type="button" class="btn-remove" onclick="removeSavedResult(${index})">Remove</button>
+                        <button type="button" class="btn-view" onclick="viewSavedResult(${i})">View</button>
+                        <button type="button" class="btn-remove" onclick="removeSavedResult(${i})">Remove</button>
                     </div>
                 `;
-                
-                savedResultsList.appendChild(savedItem);
+                list.appendChild(item);
             });
         }
 
-        // View a saved result
         function viewSavedResult(index) {
             if (index < 0 || index >= savedResults.length) return;
-            
             const result = savedResults[index];
-            
-            // Set the search input to the first vehicle
-            const firstVehicle = result.allVendorVehicles && result.allVendorVehicles.length > 0 
-                ? result.allVendorVehicles[0] 
-                : result.vehicleNumber;
-                
+            const firstVehicle = result.allVendorVehicles && result.allVendorVehicles.length > 0 ? result.allVendorVehicles[0] : result.vehicleNumber;
             document.getElementById('vehicleSearch').value = firstVehicle;
-            
-            // Display the results
             displayResults(result.vendorDetails, firstVehicle);
-            
-            // Scroll to results
             document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth' });
         }
 
-        // Remove a saved result
         function removeSavedResult(index) {
-            if (index < 0 || index >= savedResults.length) return;
-            
-            if (confirm('Are you sure you want to remove this saved result?')) {
+            if (confirm('Remove this saved result?')) {
                 savedResults.splice(index, 1);
                 saveSavedResults();
                 displaySavedResults();
             }
         }
 
-        // Clear all saved results
         function clearSavedResults() {
-            if (savedResults.length === 0) {
-                alert('No saved results to clear');
-                return;
-            }
-            
-            if (confirm('Are you sure you want to clear all saved results?')) {
+            if (savedResults.length === 0) return alert('No results to clear');
+            if (confirm('Clear all saved results?')) {
                 savedResults = [];
                 saveSavedResults();
                 displaySavedResults();
             }
         }
 
-        // Download saved results as Excel file - FIXED: Now exports data for all vehicles of each vendor
         function downloadSavedResults() {
-            if (savedResults.length === 0) {
-                alert('No saved results to download');
-                return;
-            }
-            
-            // Create workbook
+            if (savedResults.length === 0) return alert('No saved results');
             const wb = XLSX.utils.book_new();
-            
-            // Prepare data for the summary sheet
-            const summaryData = [
-                ['Vendor Name', 'PAN', 'Account Number', 'Bank Name', 'Beneficiary', 'Total Vehicles', 'Total Records', 'Total Quantity', 'Total Amount']
-            ];
-            
-            savedResults.forEach(result => {
-                const vendor = result.vendorDetails.length > 0 ? result.vendorDetails[0] : null;
-                
-                // Use vendor totals
-                const totalVehicles = result.vendorTotals.totalVehicles || result.allVendorVehicles?.length || 1;
-                const totalRecords = result.vendorTotals.totalRecords || result.recordCount || 0;
-                const totalQuantity = result.vendorTotals.totalQuantity || result.totalQuantity || 0;
-                const totalAmount = result.vendorTotals.totalAmount || result.totalAmount || 0;
-                
-                summaryData.push([
-                    vendor ? vendor.partyName : 'Not Found',
-                    vendor ? vendor.pan : 'N/A',
-                    vendor ? vendor.accountNo : 'N/A',
-                    vendor ? vendor.bankName : 'N/A',
-                    vendor ? vendor.beneficiary : 'N/A',
-                    totalVehicles,
-                    totalRecords,
-                    totalQuantity,
-                    totalAmount
+            const summary = [['Vendor', 'PAN', 'A/c No', 'Bank', 'Beneficiary', 'Vehicles', 'Records', 'Qty', 'Amount']];
+            savedResults.forEach(r => {
+                const v = r.vendorDetails.length > 0 ? r.vendorDetails[0] : null;
+                const t = r.vendorTotals;
+                summary.push([
+                    v ? v.partyName : 'N/A',
+                    v ? v.pan : 'N/A',
+                    v ? v.accountNo : 'N/A',
+                    v ? v.bankName : 'N/A',
+                    v ? v.beneficiary : 'N/A',
+                    t.totalVehicles,
+                    t.totalRecords,
+                    t.totalQuantity,
+                    t.totalAmount
                 ]);
             });
-            
-            // Create summary worksheet
-            const summaryWs = XLSX.utils.aoa_to_sheet(summaryData);
-            XLSX.utils.book_append_sheet(wb, summaryWs, 'Summary');
-            
-            // Create detailed worksheets for each saved vendor (not just vehicle)
-            savedResults.forEach((result, index) => {
-                const vendor = result.vendorDetails.length > 0 ? result.vendorDetails[0] : null;
-                const vendorName = vendor ? vendor.partyName.replace(/[^\w\s]/gi, '') : `Vendor_${index + 1}`;
-                
-                // Get ALL transport records for ALL vehicles of this vendor
-                let allVendorRecords = [];
-                if (result.allVendorTransportRecords && result.allVendorTransportRecords.length > 0) {
-                    allVendorRecords = result.allVendorTransportRecords;
-                } else if (result.allVendorVehicles && result.allVendorVehicles.length > 0) {
-                    // If we don't have the records pre-calculated, get them now
-                    result.allVendorVehicles.forEach(vehicleNumber => {
-                        const vehicleRecords = transportData.filter(record => {
-                            const recordVehicleNo = record['VEHICLE NO'] ? record['VEHICLE NO'].toString().trim().toUpperCase() : '';
-                            return recordVehicleNo === vehicleNumber;
-                        });
-                        allVendorRecords = allVendorRecords.concat(vehicleRecords);
-                    });
-                } else {
-                    // Fallback to just the searched vehicle
-                    allVendorRecords = result.transportRecords || [];
-                }
-                
-                if (allVendorRecords.length > 0) {
-                    const detailData = [
-                        ['Accounting Date', 'Customer Name', 'Vehicle No', 'Material', 'Net Weight', 'Transport Rate', 'Transport Amount']
-                    ];
-                    
-                    allVendorRecords.forEach(record => {
-                        detailData.push([
-                            formatDateForDisplay(record['Accounting Date']),
-                            record['NAME OF THE CUSTOMER'] || '',
-                            record['VEHICLE NO'] || '',
-                            record['Material'] || '',
-                            record['NET WT'] || '',
-                            record['Transport Rate'] || '',
-                            record['Transport Amount'] || ''
-                        ]);
-                    });
-                    
-                    // Add summary rows
-                    detailData.push([]);
-                    detailData.push(['Vendor Summary:', '']);
-                    detailData.push(['Total Vehicles:', result.vendorTotals.totalVehicles || result.allVendorVehicles?.length || 1]);
-                    detailData.push(['Total Records:', result.vendorTotals.totalRecords || result.recordCount || 0]);
-                    detailData.push(['Total Quantity:', result.vendorTotals.totalQuantity || result.totalQuantity || 0]);
-                    detailData.push(['Total Amount:', result.vendorTotals.totalAmount || result.totalAmount || 0]);
-                    
-                    const detailWs = XLSX.utils.aoa_to_sheet(detailData);
-                    XLSX.utils.book_append_sheet(wb, detailWs, vendorName.substring(0, 31)); // Sheet name max 31 chars
-                }
+            const ws = XLSX.utils.aoa_to_sheet(summary);
+            XLSX.utils.book_append_sheet(wb, ws, 'Summary');
+            savedResults.forEach((r, i) => {
+                const v = r.vendorDetails.length > 0 ? r.vendorDetails[0] : null;
+                const name = (v ? v.partyName : `Vendor_${i+1}`).replace(/[^\w]/g, '');
+                const data = [['Date', 'Customer', 'Vehicle', 'Material', 'Net Wt', 'Rate', 'Amount']];
+                r.allVendorTransportRecords.forEach(rec => {
+                    data.push([
+                        formatDateForDisplay(rec['Accounting Date']),
+                        rec['NAME OF THE CUSTOMER'] || '',
+                        rec['VEHICLE NO'] || '',
+                        rec['Material'] || '',
+                        rec['NET WT'] || '',
+                        rec['Transport Rate'] || '',
+                        rec['Transport Amount'] || ''
+                    ]);
+                });
+                const detailWs = XLSX.utils.aoa_to_sheet(data);
+                XLSX.utils.book_append_sheet(wb, detailWs, name.substring(0, 31));
             });
-            
-            // Generate and download the file
-            const fileName = `Transport_Vendor_Results_${new Date().toISOString().split('T')[0]}.xlsx`;
-            XLSX.writeFile(wb, fileName);
+            XLSX.writeFile(wb, `Transport_Results_${new Date().toISOString().split('T')[0]}.xlsx`);
         }
 
-        // Print results
-        function printResults() {
-            window.print();
-        }
+        function printResults() { window.print(); }
 
-        // Toggle add vendor form
         function toggleAddVendorForm() {
-            const addVendorSection = document.getElementById('addVendorSection');
-            const resultsSection = document.getElementById('resultsSection');
-            
-            if (addVendorSection.style.display === 'block') {
-                addVendorSection.style.display = 'none';
+            const section = document.getElementById('addVendorSection');
+            const results = document.getElementById('resultsSection');
+            if (section.style.display === 'block') {
+                section.style.display = 'none';
                 document.getElementById('vendorForm').reset();
-                // Reset to single vehicle field
                 const container = document.getElementById('vehicleNumbersContainer');
-                while (container.children.length > 1) {
-                    container.removeChild(container.lastChild);
-                }
+                while (container.children.length > 1) container.removeChild(container.lastChild);
             } else {
-                addVendorSection.style.display = 'block';
-                resultsSection.style.display = 'none';
-                addVendorSection.scrollIntoView({ behavior: 'smooth' });
+                section.style.display = 'block';
+                results.style.display = 'none';
+                section.scrollIntoView({ behavior: 'smooth' });
             }
         }
 
-        // Add vehicle field
         function addVehicleField() {
             const container = document.getElementById('vehicleNumbersContainer');
-            const newField = document.createElement('div');
-            newField.className = 'vehicle-number-input';
-            newField.innerHTML = `
-                <input type="text" class="vehicleNumber" placeholder="Vehicle Number">
-                <button type="button" class="remove-vehicle" onclick="removeVehicleField(this)">Remove</button>
-            `;
-            container.appendChild(newField);
+            const div = document.createElement('div');
+            div.className = 'vehicle-number-input';
+            div.innerHTML = `<input type="text" class="vehicleNumber" placeholder="Vehicle Number"><button type="button" class="remove-vehicle" onclick="removeVehicleField(this)">Remove</button>`;
+            container.appendChild(div);
         }
 
-        // Remove vehicle field
-        function removeVehicleField(button) {
+        function removeVehicleField(btn) {
             const container = document.getElementById('vehicleNumbersContainer');
-            if (container.children.length > 1) {
-                container.removeChild(button.parentNode);
-            }
+            if (container.children.length > 1) container.removeChild(btn.parentNode);
         }
 
-        // Add new vendor
         function addNewVendor() {
-            const partyName = document.getElementById('partyName').value.trim();
-            const accountNo = document.getElementById('accountNo').value.trim();
-            const bankName = document.getElementById('bankName').value.trim();
-            const beneficiary = document.getElementById('beneficiary').value.trim();
+            const party = document.getElementById('partyName').value.trim();
+            const acc = document.getElementById('accountNo').value.trim();
+            const bank = document.getElementById('bankName').value.trim();
+            const ben = document.getElementById('beneficiary').value.trim();
             const pan = document.getElementById('pan').value.trim();
-            
-            // Get all vehicle numbers
-            const vehicleInputs = document.querySelectorAll('.vehicleNumber');
-            const vehicleNumbers = [];
-            
-            vehicleInputs.forEach(input => {
-                const value = input.value.trim().toUpperCase();
-                if (value) {
-                    vehicleNumbers.push(value);
-                }
-            });
-            
-            // Validate required fields
-            if (!partyName || !accountNo || !bankName || !beneficiary || !pan || vehicleNumbers.length === 0) {
-                alert('Please fill in all required fields');
-                return;
-            }
-            
-            // Create new vendor object
-            const newVendor = {
-                partyName,
-                accountNo,
-                bankName,
-                beneficiary,
-                pan,
-                vehicleNumbers
-            };
-            
-            // Add to data array
-            vehicleData.push(newVendor);
-            
-            // Show success message
-            alert('Vendor added successfully!');
-            
-            // Reset form and hide it
+            const inputs = document.querySelectorAll('.vehicleNumber');
+            const vehicles = Array.from(inputs).map(i => i.value.trim().toUpperCase()).filter(v => v);
+            if (!party || !acc || !bank || !ben || !pan || vehicles.length === 0) return alert('Fill all fields');
+            vehicleData.push({ partyName: party, accountNo: acc, bankName: bank, beneficiary: ben, pan, vehicleNumbers: vehicles });
+            alert('Vendor added!');
             document.getElementById('vendorForm').reset();
             toggleAddVendorForm();
         }
 
-        // Initialize the app when page loads
         window.onload = initApp;
     </script>
-    
-    <!-- Include SheetJS library for Excel file processing -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </body>
 </html>
