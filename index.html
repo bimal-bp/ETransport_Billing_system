@@ -56,11 +56,14 @@
         .tipper-card {
             cursor: pointer;
             transition: all 0.3s;
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
         }
         
         .tipper-card.selected {
             border: 2px solid var(--secondary);
             transform: scale(1.02);
+            background-color: rgba(52, 152, 219, 0.05);
         }
         
         .progress-container {
@@ -229,6 +232,35 @@
             margin-top: 3rem;
             border-radius: 10px 10px 0 0;
         }
+        
+        /* New layout styles */
+        .content-container {
+            display: flex;
+            gap: 1.5rem;
+        }
+        
+        .sidebar {
+            flex: 0 0 300px;
+        }
+        
+        .main-content {
+            flex: 1;
+        }
+        
+        .tipper-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        @media (max-width: 992px) {
+            .content-container {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                flex: 0 0 auto;
+            }
+        }
     </style>
 </head>
 <body>
@@ -249,14 +281,15 @@
     </div>
 
     <div class="container">
-        <!-- Bucket Size Selection -->
-        <div class="card mb-4">
-            <div class="card-header">
-                <i class="fas fa-arrows-alt-v me-2"></i>Select Loader Bucket Size
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6">
+        <div class="content-container">
+            <!-- Left Sidebar with Tipper Selection -->
+            <div class="sidebar">
+                <!-- Bucket Size Selection -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <i class="fas fa-arrows-alt-v me-2"></i>Select Loader Bucket Size
+                    </div>
+                    <div class="card-body">
                         <div class="bucket-size-option mb-3 selected" data-size="0.7">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
@@ -268,8 +301,6 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    <div class="col-md-6">
                         <div class="bucket-size-option mb-3" data-size="1.1">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
@@ -280,82 +311,85 @@
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
 
-        <!-- Tipper Selection -->
-        <div class="card mb-4">
-            <div class="card-header">
-                <i class="fas fa-truck me-2"></i>Select a Tipper
-            </div>
-            <div class="card-body">
-                <div class="row" id="tipper-list">
-                    <!-- Tippers will be populated by JavaScript -->
+                <!-- Tipper Selection -->
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-truck me-2"></i>Select a Tipper
+                    </div>
+                    <div class="card-body">
+                        <div class="tipper-list" id="tipper-list">
+                            <!-- Tippers will be populated by JavaScript -->
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Loading Progress -->
-        <div class="card mb-4" id="loading-section" style="display: none;">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span><i class="fas fa-tachometer-alt me-2"></i>Loading Progress</span>
-                <span class="capacity-badge" id="capacity-badge">Capacity: 0 m³</span>
-            </div>
-            <div class="card-body">
-                <div class="row mb-4">
-                    <div class="col-md-8">
-                        <h4 id="tipper-name">Tipper Name</h4>
-                        <p class="text-muted" id="bucket-info">Loader Bucket Size: 0.9 m³</p>
-                        
-                        <div class="progress-container">
-                            <div class="progress-bar" id="progress-bar" style="width: 0%">0%</div>
+            <!-- Main Content Area -->
+            <div class="main-content">
+                <!-- Loading Progress -->
+                <div class="card mb-4" id="loading-section" style="display: none;">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span><i class="fas fa-tachometer-alt me-2"></i>Loading Progress</span>
+                        <span class="capacity-badge" id="capacity-badge">Capacity: 0 m³</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-4">
+                            <div class="col-md-8">
+                                <h4 id="tipper-name">Tipper Name</h4>
+                                <p class="text-muted" id="bucket-info">Loader Bucket Size: 0.9 m³</p>
+                                
+                                <div class="progress-container">
+                                    <div class="progress-bar" id="progress-bar" style="width: 0%">0%</div>
+                                </div>
+                                
+                                <div class="d-flex justify-content-between">
+                                    <span id="loaded-volume">Loaded: 0.0 m³</span>
+                                    <span id="bucket-count">0/0 buckets</span>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="metric-card">
+                                    <div class="metric-label">Current Load</div>
+                                    <div class="metric-value text-primary" id="current-load">0.0 m³</div>
+                                    <div class="metric-label">Remaining</div>
+                                    <div class="metric-value text-success" id="remaining-capacity">0.0 m³</div>
+                                </div>
+                            </div>
                         </div>
                         
-                        <div class="d-flex justify-content-between">
-                            <span id="loaded-volume">Loaded: 0.0 m³</span>
-                            <span id="bucket-count">0/0 buckets</span>
+                        <div class="mb-4">
+                            <h5>Bucket Progress</h5>
+                            <div class="bucket-indicator" id="bucket-indicator">
+                                <!-- Buckets will be populated by JavaScript -->
+                            </div>
+                        </div>
+                        
+                        <div class="status-indicator status-empty" id="status-indicator">
+                            <i class="fas fa-info-circle me-2"></i>Status: Empty
+                        </div>
+                        
+                        <div class="d-flex gap-3 mt-4">
+                            <button class="btn btn-primary-custom btn-custom flex-fill" id="add-bucket">
+                                <i class="fas fa-plus-circle me-2"></i>Add Bucket
+                            </button>
+                            <button class="btn btn-danger-custom btn-custom" id="reset-loading">
+                                <i class="fas fa-redo me-2"></i>Reset
+                            </button>
                         </div>
                     </div>
-                    <div class="col-md-4">
-                        <div class="metric-card">
-                            <div class="metric-label">Current Load</div>
-                            <div class="metric-value text-primary" id="current-load">0.0 m³</div>
-                            <div class="metric-label">Remaining</div>
-                            <div class="metric-value text-success" id="remaining-capacity">0.0 m³</div>
-                        </div>
-                    </div>
                 </div>
-                
-                <div class="mb-4">
-                    <h5>Bucket Progress</h5>
-                    <div class="bucket-indicator" id="bucket-indicator">
-                        <!-- Buckets will be populated by JavaScript -->
-                    </div>
-                </div>
-                
-                <div class="status-indicator status-empty" id="status-indicator">
-                    <i class="fas fa-info-circle me-2"></i>Status: Empty
-                </div>
-                
-                <div class="d-flex gap-3 mt-4">
-                    <button class="btn btn-primary-custom btn-custom flex-fill" id="add-bucket">
-                        <i class="fas fa-plus-circle me-2"></i>Add Bucket
-                    </button>
-                    <button class="btn btn-danger-custom btn-custom" id="reset-loading">
-                        <i class="fas fa-redo me-2"></i>Reset
-                    </button>
-                </div>
-            </div>
-        </div>
 
-        <!-- Recent Activity -->
-        <div class="card">
-            <div class="card-header">
-                <i class="fas fa-history me-2"></i>Recent Activity
-            </div>
-            <div class="card-body">
-                <div id="activity-log">
-                    <p class="text-muted text-center">No activity yet. Select a tipper and start loading.</p>
+                <!-- Recent Activity -->
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-history me-2"></i>Recent Activity
+                    </div>
+                    <div class="card-body">
+                        <div id="activity-log">
+                            <p class="text-muted text-center">No activity yet. Select a tipper and start loading.</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -419,22 +453,21 @@
             tipperList.innerHTML = '';
             
             tippers.forEach(tipper => {
-                const col = document.createElement('div');
-                col.className = 'col-md-4 mb-3';
-                
                 const isSelected = state.selectedTipper && state.selectedTipper.id === tipper.id;
                 
-                col.innerHTML = `
-                    <div class="card tipper-card ${isSelected ? 'selected' : ''}" data-id="${tipper.id}">
-                        <div class="card-body">
-                            <h5 class="card-title">${tipper.id}</h5>
-                            <p class="card-text">Capacity: ${tipper.capacity} m³</p>
-                            <span class="badge bg-primary">Available</span>
-                        </div>
+                const tipperCard = document.createElement('div');
+                tipperCard.className = `card tipper-card ${isSelected ? 'selected' : ''}`;
+                tipperCard.setAttribute('data-id', tipper.id);
+                
+                tipperCard.innerHTML = `
+                    <div class="card-body p-2">
+                        <h6 class="card-title mb-1">${tipper.id}</h6>
+                        <p class="card-text mb-1 small">Capacity: ${tipper.capacity} m³</p>
+                        <span class="badge bg-primary small">Available</span>
                     </div>
                 `;
                 
-                tipperList.appendChild(col);
+                tipperList.appendChild(tipperCard);
             });
             
             // Add click event to tipper cards
@@ -455,9 +488,6 @@
             renderTippers();
             updateLoadingSection();
             loadingSection.style.display = 'block';
-            
-            // Scroll to loading section
-            loadingSection.scrollIntoView({ behavior: 'smooth' });
             
             // Log activity
             logActivity(`Selected tipper: ${tipperId}`);
