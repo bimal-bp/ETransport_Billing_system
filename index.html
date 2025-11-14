@@ -185,9 +185,10 @@
         .bucket-size-option {
             border: 2px solid #e9ecef;
             border-radius: 8px;
-            padding: 1rem;
+            padding: 0.75rem;
             cursor: pointer;
             transition: all 0.3s;
+            margin-bottom: 0.5rem;
         }
         
         .bucket-size-option.selected {
@@ -248,7 +249,7 @@
         }
         
         .tipper-list {
-            max-height: 400px;
+            max-height: 300px;
             overflow-y: auto;
         }
         
@@ -262,29 +263,37 @@
             }
         }
         
-        /* New styles for bucket size in row format */
-        .bucket-size-row {
-            display: flex;
-            gap: 1rem;
-        }
-        
-        .bucket-size-option-row {
-            flex: 1;
+        /* Compact bucket size options */
+        .bucket-size-option-compact {
             border: 2px solid #e9ecef;
             border-radius: 8px;
-            padding: 1rem;
+            padding: 0.75rem;
             cursor: pointer;
             transition: all 0.3s;
-            text-align: center;
+            margin-bottom: 0.5rem;
         }
         
-        .bucket-size-option-row.selected {
+        .bucket-size-option-compact.selected {
             border-color: var(--secondary);
             background-color: rgba(52, 152, 219, 0.05);
         }
         
-        .bucket-size-option-row:hover {
+        .bucket-size-option-compact:hover {
             border-color: var(--secondary);
+        }
+        
+        .bucket-size-option-compact h6 {
+            margin-bottom: 0.25rem;
+            font-size: 0.9rem;
+        }
+        
+        .bucket-size-option-compact p {
+            margin-bottom: 0.25rem;
+            font-size: 0.8rem;
+        }
+        
+        .sidebar-card .card-body {
+            padding: 1rem;
         }
     </style>
 </head>
@@ -307,7 +316,7 @@
 
     <div class="container">
         <div class="content-container">
-            <!-- Left Sidebar with Tipper Selection -->
+            <!-- Left Sidebar with Tipper Selection and Bucket Size -->
             <div class="sidebar">
                 <!-- Tipper Selection -->
                 <div class="card">
@@ -320,32 +329,30 @@
                         </div>
                     </div>
                 </div>
+                
+                <!-- Bucket Size Selection - Moved to sidebar and made compact -->
+                <div class="card sidebar-card">
+                    <div class="card-header">
+                        <i class="fas fa-arrows-alt-v me-2"></i>Loader Bucket Size
+                    </div>
+                    <div class="card-body">
+                        <div class="bucket-size-option-compact selected" data-size="0.7">
+                            <h6 class="mb-1">Small Bucket</h6>
+                            <p class="mb-1">Capacity: 0.9 m³</p>
+                            <p class="mb-0 text-muted">Effective: 0.7 m³</p>
+                            <span class="badge bg-secondary mt-1">Recommended</span>
+                        </div>
+                        <div class="bucket-size-option-compact" data-size="1.1">
+                            <h6 class="mb-1">Large Bucket</h6>
+                            <p class="mb-1">Capacity: 1.3 m³</p>
+                            <p class="mb-0 text-muted">Effective: 1.1 m³</p>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Main Content Area -->
             <div class="main-content">
-                <!-- Bucket Size Selection -->
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <i class="fas fa-arrows-alt-v me-2"></i>Select Loader Bucket Size
-                    </div>
-                    <div class="card-body">
-                        <div class="bucket-size-row">
-                            <div class="bucket-size-option-row selected" data-size="0.7">
-                                <h5 class="mb-2">Small Bucket</h5>
-                                <p class="mb-1">Capacity: 0.9 m³</p>
-                                <p class="mb-0 text-muted">Effective: 0.7 m³</p>
-                                <span class="badge bg-secondary mt-2">Recommended</span>
-                            </div>
-                            <div class="bucket-size-option-row" data-size="1.1">
-                                <h5 class="mb-2">Large Bucket</h5>
-                                <p class="mb-1">Capacity: 1.3 m³</p>
-                                <p class="mb-0 text-muted">Effective: 1.1 m³</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- Loading Progress -->
                 <div class="card mb-4" id="loading-section" style="display: none;">
                     <div class="card-header d-flex justify-content-between align-items-center">
@@ -456,7 +463,7 @@
         const statusIndicator = document.getElementById('status-indicator');
         const addBucketBtn = document.getElementById('add-bucket');
         const resetBtn = document.getElementById('reset-loading');
-        const bucketSizeOptions = document.querySelectorAll('.bucket-size-option-row');
+        const bucketSizeOptions = document.querySelectorAll('.bucket-size-option-compact');
         const activityLog = document.getElementById('activity-log');
 
         // Initialize the application
